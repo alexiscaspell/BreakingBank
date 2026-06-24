@@ -16,6 +16,8 @@ import {
   type Transaction,
 } from "../data";
 import { BASE_CURRENCY, type CurrencyCode } from "../constants/currencies";
+import { presetForCategoryName } from "../constants/presetIcons";
+import { normalizeEntityName } from "../utils/normalize";
 import { syncNow } from "../sync";
 import {
   buildCsv,
@@ -205,13 +207,22 @@ async function resolveAccountId(name: string): Promise<string> {
 }
 
 async function resolveCategoryId(name: string, type: TxType): Promise<string> {
+  const cleaned = name.trim().replace(/\s+/g, " ");
+  const norm = normalizeEntityName(cleaned);
   const categories = await listCategories(type);
-  const found = categories.find((c) => c.name === name);
+  const found = categories.find((c) => normalizeEntityName(c.name) === norm);
   if (found) return found.id;
-  await createCategory({ name, type, color: "#9E9E9E", icon_type: "preset", icon_key: "other" });
+  const preset = presetForCategoryName(cleaned, type);
+  await createCategory({
+    name: preset?.label ?? cleaned,
+    type,
+    color: preset?.color ?? "#9E9E9E",
+    icon_type: "preset",
+    icon_key: preset?.key ?? "other",
+  });
   const refreshed = await listCategories(type);
-  const created = refreshed.find((c) => c.name === name);
-  if (!created) throw new Error(`No se pudo crear la categoría "${name}"`);
+  const created = refreshed.find((c) => normalizeEntityName(c.name) === normalizeEntityName(preset?.label ?? cleaned));
+  if (!created) throw new Error(`No se pudo crear la categoría "${cleaned}"`);
   return created.id;
 }
 
@@ -262,7 +273,7 @@ export async function importFile(
   uri: string,
   filename: string,
   mimeType?: string | null
-): Promise<{ created: number; skipped: number; errors: string[] }> {
+): Promise<{ created: number; skipped: number; errors: string[]; date_from?: string; date_to?: string }> {
   let name = filename.trim() || "import.xlsx";
   const lower = name.toLowerCase();
   if (!lower.endsWith(".xlsx") && !lower.endsWith(".csv")) {

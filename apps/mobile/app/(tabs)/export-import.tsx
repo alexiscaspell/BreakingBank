@@ -11,6 +11,7 @@ import { useTheme } from "../../src/contexts/ThemeContext";
 import { exportMonth, importFile, type ExportFormat, type TxType } from "../../src/services/exportImport";
 import { showAlert } from "../../src/utils/alert";
 import { monthLabel } from "../../src/utils/format";
+import { monthOptions } from "../../src/utils/period";
 import { shape } from "../../src/theme/shape";
 
 const PICK_TYPES_WEB = [
@@ -28,22 +29,11 @@ const PICK_TYPES_NATIVE = [
   "*/*",
 ];
 
-function monthOptions(count: number) {
-  const now = new Date();
-  const items: { key: string; label: string }[] = [];
-  for (let i = 0; i < count; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    items.push({ key, label: monthLabel(d) });
-  }
-  return items;
-}
-
 export default function ExportImportScreen() {
   const { colors } = useTheme();
   const { t, tf, localeTag } = useLocale();
   const { defaultCurrency } = useCurrency();
-  const months = useMemo(() => monthOptions(24), [localeTag]);
+  const months = useMemo(() => monthOptions(24, localeTag), [localeTag]);
   const [type, setType] = useState<TxType>("expense");
   const [monthKey, setMonthKey] = useState("");
   const [format, setFormat] = useState<ExportFormat>("xlsx");
@@ -116,13 +106,17 @@ export default function ExportImportScreen() {
       const filename = asset.name ?? (asset.mimeType?.includes("csv") ? "import.csv" : "import.xlsx");
       setBusy(true);
       const result = await importFile(type, asset.uri, filename, asset.mimeType);
+      const dateHint =
+        result.date_from && result.date_to
+          ? `\n\n${tf("exportImport.importDateRange", { from: result.date_from, to: result.date_to })}`
+          : "";
       const detail =
         result.errors.length > 0
           ? `\n\n${result.errors.slice(0, 5).join("\n")}${result.errors.length > 5 ? "\n…" : ""}`
           : "";
       showAlert(
         t("exportImport.importDoneTitle"),
-        `${tf("exportImport.importDoneMsg", { created: result.created, skipped: result.skipped })}${detail}`
+        `${tf("exportImport.importDoneMsg", { created: result.created, skipped: result.skipped })}${dateHint}${detail}`
       );
     } catch (e) {
       showAlert(t("common.error"), e instanceof Error ? e.message : t("exportImport.importFailed"));

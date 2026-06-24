@@ -10,10 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.constants.category_presets import preset_for_category_name
 from app.models.account import Account
 from app.models.category import Category
 from app.models.label import Label, TransactionLabel
 from app.models.transaction import Transaction
+from app.utils.names import normalize_entity_name
 
 HEADERS = [
     "Fecha y hora",
@@ -276,27 +278,47 @@ async def resolve_account(db: AsyncSession, group_id: str, user_id: str, name: s
     return acc
 
 
-async def resolve_category(
-    db: AsyncSession, group_id: str, user_id: str, name: str, tx_type: str
-) -> Category:
+async def find_category_by_name(
+    db: AsyncSession, group_id: str, name: str, tx_type: str
+) -> Category | None:
+    norm = normalize_entity_name(name)
+    if not norm:
+        return None
     result = await db.execute(
         select(Category).where(
             Category.group_id == group_id,
             Category.deleted_at.is_(None),
-            Category.name == name,
             Category.type == tx_type,
         )
     )
-    cat = result.scalar_one_or_none()
+    for cat in result.scalars().all():
+        if normalize_entity_name(cat.name) == norm:
+            return cat
+    return None
+
+
+async def resolve_category(
+    db: AsyncSession, group_id: str, user_id: str, name: str, tx_type: str
+) -> Category:
+    cleaned = " ".join(str(name).strip().split())
+    cat = await find_category_by_name(db, group_id, cleaned, tx_type)
     if cat:
         return cat
+    preset = preset_for_category_name(cleaned, tx_type)
+    if preset:
+        display_name, color, icon_key = preset
+    else:
+        display_name, color, icon_key = cleaned, "#9E9E9E", "other"
     cat = Category(
         id=str(uuid.uuid4()),
         client_id=str(uuid.uuid4()),
         user_id=user_id,
         group_id=group_id,
-        name=name,
+        name=display_name,
         type=tx_type,
+        color=color,
+        icon_type="preset",
+        icon_key=icon_key,
     )
     db.add(cat)
     await db.flush()
@@ -336,6 +358,7 @@ async def import_transactions(
     created = 0
     skipped = 0
     errors: list[str] = []
+    dates: list[date] = []
 
     for i, row in enumerate(rows, start=1):
         if not row.get("category") or not row.get("account"):
@@ -346,6 +369,7 @@ async def import_transactions(
             skipped += 1
             errors.append(f"Fila {i}: fecha inválida")
             continue
+        dates.append(row["date"])
         account = await resolve_account(db, group_id, user_id, row["account"])
         category = await resolve_category(db, group_id, user_id, row["category"], tx_type)
         txn = Transaction(
@@ -368,7 +392,11 @@ async def import_transactions(
         created += 1
 
     await db.commit()
-    return {"created": created, "skipped": skipped, "errors": errors}
+    result = {"created": created, "skipped": skipped, "errors": errors}
+    if dates:
+        result["date_from"] = min(dates).isoformat()
+        result["date_to"] = max(dates).isoformat()
+    return result
 
 
 async def export_month(

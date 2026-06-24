@@ -184,6 +184,8 @@ export function CategoryFormModal({ visible, onClose, onSaved, editing, defaultT
               <IconPickerGrid
                 icons={CATEGORY_ICON_PRESETS}
                 selectedKey={selectedPreset.key}
+                searchable
+                searchPlaceholder="Buscar icono…"
                 onSelect={(icon) => {
                   setSelectedPreset(icon);
                   if (icon.color) setColor(icon.color);

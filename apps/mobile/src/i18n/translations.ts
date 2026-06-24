@@ -98,6 +98,7 @@ export const es = {
   "exportImport.exportFailed": "No se pudo exportar",
   "exportImport.importDoneTitle": "Importación completa",
   "exportImport.importDoneMsg": "Creados: {created}. Omitidos: {skipped}.",
+  "exportImport.importDateRange": "Fechas importadas: {from} a {to}. En Inicio elegí Año, o en Movimientos el mes correspondiente.",
   "exportImport.importFailed": "No se pudo importar",
 
   "transactions.deleteTitle": "Eliminar transacción",
@@ -270,6 +271,7 @@ export const en = {
   "exportImport.exportFailed": "Could not export",
   "exportImport.importDoneTitle": "Import complete",
   "exportImport.importDoneMsg": "Created: {created}. Skipped: {skipped}.",
+  "exportImport.importDateRange": "Imported dates: {from} to {to}. On Home pick Year, or pick the month under Transactions.",
   "exportImport.importFailed": "Could not import",
 
   "transactions.deleteTitle": "Delete transaction",

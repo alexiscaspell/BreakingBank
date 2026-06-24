@@ -1,11 +1,5 @@
 import type { MaterialCommunityIcons } from "@expo/vector-icons";
-
-export type PresetIcon = {
-  key: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  label: string;
-  color?: string;
-};
+import { normalizeEntityName } from "../utils/normalize";
 
 export const CATEGORY_ICON_PRESETS: PresetIcon[] = [
   { key: "supermarket", icon: "cart", label: "Supermercado", color: "#e91e8c" },
@@ -94,3 +88,25 @@ export const COLOR_OPTIONS = [
   "#4ecdc4", "#2196F3", "#4CAF50", "#e91e8c", "#FFC107", "#FF5722",
   "#9C27B0", "#795548", "#607D8B", "#E53935", "#00BCD4", "#673AB7",
 ];
+
+const CATEGORY_ALIASES: Record<string, string> = {
+  carniceria: "Carnicería",
+  verduleria: "Verdulería",
+  libreria: "Libros",
+  indumentaria: "Ropa",
+  bazar: "Compras",
+  salidas: "Restaurante",
+  ocio: "Cine",
+  veterinaria: "Mascotas",
+};
+
+export function presetForCategoryName(name: string, type: "expense" | "income" = "expense"): PresetIcon | undefined {
+  const norm = normalizeEntityName(name);
+  const aliasLabel = CATEGORY_ALIASES[norm];
+  if (aliasLabel) {
+    const aliasNorm = normalizeEntityName(aliasLabel);
+    const fromAlias = CATEGORY_ICON_PRESETS.find((p) => normalizeEntityName(p.label) === aliasNorm);
+    if (fromAlias) return fromAlias;
+  }
+  return CATEGORY_ICON_PRESETS.find((p) => normalizeEntityName(p.label) === norm);
+}

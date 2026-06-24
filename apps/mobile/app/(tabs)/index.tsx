@@ -8,6 +8,7 @@ import { listAccounts, getAnalyticsSummary } from "../../src/data";
 import { Fab } from "../../src/components/Fab";
 import { PeriodTabs } from "../../src/components/PeriodTabs";
 import { TypeTabs } from "../../src/components/TypeTabs";
+import { ChipGroup } from "../../src/components/material/Chip";
 import { CategoryIcon } from "../../src/components/CategoryIcon";
 import { AppBar } from "../../src/components/material/AppBar";
 import { Surface } from "../../src/components/material/Surface";
@@ -16,6 +17,8 @@ import { useGroup } from "../../src/contexts/GroupContext";
 import { useLocale } from "../../src/contexts/LocaleContext";
 import type { PeriodKey } from "../../src/i18n";
 import { formatMoney, monthLabel } from "../../src/utils/format";
+import { periodBounds } from "../../src/utils/period";
+import { monthBoundsFromKey, monthOptions } from "../../src/utils/period";
 import { shape } from "../../src/theme/shape";
 
 type Summary = {
@@ -35,17 +38,31 @@ type Account = { id: string; name: string; balance: number };
 
 export default function HomeScreen() {
   const { colors } = useTheme();
-  const { t } = useLocale();
+  const { t, localeTag } = useLocale();
   const { activeGroup } = useGroup();
   const [type, setType] = useState<"expense" | "income">("expense");
   const [period, setPeriod] = useState<PeriodKey>("month");
+  const [monthKey, setMonthKey] = useState("");
+  const months = useMemo(() => monthOptions(24, localeTag), [localeTag]);
+  const activeMonthKey = monthKey || months[0]?.key || "";
+  const now = new Date();
+  const { start, end } = useMemo(() => {
+    if (period === "month" && activeMonthKey) return monthBoundsFromKey(activeMonthKey);
+    return periodBounds(period, now);
+  }, [period, activeMonthKey, now.getMonth(), now.getFullYear(), now.getDate()]);
+  const periodLabel = useMemo(() => {
+    if (period === "month" && activeMonthKey) {
+      const [y, m] = activeMonthKey.split("-").map(Number);
+      return monthLabel(new Date(y, m - 1, 1));
+    }
+    if (period === "year") return String(now.getFullYear());
+    if (period === "day") return monthLabel(now);
+    return `${start} — ${end}`;
+  }, [period, activeMonthKey, start, end, now]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [accountPickerOpen, setAccountPickerOpen] = useState(false);
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
 
   const load = useCallback(async () => {
     const accs = await listAccounts();
@@ -112,7 +129,10 @@ export default function HomeScreen() {
       </Surface>
       <TypeTabs value={type} onChange={setType} />
       <PeriodTabs value={period} onChange={setPeriod} />
-      <Text style={styles.month}>{monthLabel(now)}</Text>
+      {period === "month" ? (
+        <ChipGroup items={months.slice(0, 6)} value={activeMonthKey} onChange={setMonthKey} scrollable />
+      ) : null}
+      <Text style={styles.month}>{periodLabel}</Text>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Surface style={styles.chartCard} radius={shape.lg}>
           <DonutChart data={pieData} total={summary?.total ?? 0} />

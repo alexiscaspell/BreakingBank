@@ -2,23 +2,10 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.constants.category_presets import DEFAULT_CATEGORIES
 from app.models.account import Account
 from app.models.category import Category
 from app.models.label import Label
-
-DEFAULT_CATEGORIES = [
-    ("Supermercado", "expense", "#e91e8c", "supermarket"),
-    ("Casa", "expense", "#4ecdc4", "house"),
-    ("Transporte", "expense", "#2196F3", "transport"),
-    ("Carnicería", "expense", "#f44336", "meat"),
-    ("Verdulería", "expense", "#4CAF50", "greengrocer"),
-    ("Delivery", "expense", "#FFC107", "delivery"),
-    ("Gasto hormiga", "expense", "#1a3d2e", "ant"),
-    ("Regalos", "expense", "#e91e8c", "gift"),
-    ("Otros", "expense", "#9E9E9E", "other"),
-    ("Salario", "income", "#4CAF50", "salary"),
-    ("Otros ingresos", "income", "#9E9E9E", "other"),
-]
 
 DEFAULT_LABELS = ["Alimentos", "Cena", "Limpieza", "Regalo", "Uber", "Servicio", "Gasto fijo", "Noche", "Tarde"]
 

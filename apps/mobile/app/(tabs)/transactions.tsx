@@ -5,21 +5,26 @@ import { deleteTransaction, listTransactions, type Transaction } from "../../src
 import { CategoryIcon } from "../../src/components/CategoryIcon";
 import { Fab } from "../../src/components/Fab";
 import { TypeTabs } from "../../src/components/TypeTabs";
+import { ChipGroup } from "../../src/components/material/Chip";
 import { AppBar } from "../../src/components/material/AppBar";
 import { Surface } from "../../src/components/material/Surface";
 import { useLocale } from "../../src/contexts/LocaleContext";
 import { useTheme } from "../../src/contexts/ThemeContext";
 import { formatMoney, monthLabel } from "../../src/utils/format";
+import { monthBoundsFromKey, monthOptions } from "../../src/utils/period";
 import { shape } from "../../src/theme/shape";
 
 export default function TransactionsScreen() {
   const { colors } = useTheme();
-  const { t } = useLocale();
+  const { t, localeTag } = useLocale();
   const [type, setType] = useState<"expense" | "income">("expense");
   const [txs, setTxs] = useState<Transaction[]>([]);
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const months = useMemo(() => monthOptions(24, localeTag), [localeTag]);
+  const [monthKey, setMonthKey] = useState("");
+  const activeMonthKey = monthKey || months[0]?.key || "";
+  const { start, end } = useMemo(() => monthBoundsFromKey(activeMonthKey), [activeMonthKey]);
+  const [year, month] = activeMonthKey.split("-").map(Number);
+  const monthDate = new Date(year, month - 1, 1);
 
   const load = useCallback(async () => {
     setTxs(await listTransactions({ type, from: start, to: end }));
@@ -33,6 +38,7 @@ export default function TransactionsScreen() {
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
         month: { color: colors.textSecondary, textAlign: "center", marginVertical: 8, fontSize: 13 },
+        monthRow: { marginHorizontal: 16, marginBottom: 4 },
         card: { flexDirection: "row", gap: 12, marginHorizontal: 16, marginBottom: 8, padding: 14, alignItems: "flex-start" },
         cat: { color: colors.text, fontWeight: "700", fontSize: 15 },
         tags: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 4 },
@@ -69,7 +75,10 @@ export default function TransactionsScreen() {
     <View style={styles.container}>
       <AppBar title={t("nav.transactions")} subtitle={`${t("common.total")}: ${formatMoney(total)}`} large />
       <TypeTabs value={type} onChange={setType} />
-      <Text style={styles.month}>{monthLabel(now)}</Text>
+      <View style={styles.monthRow}>
+        <ChipGroup items={months.slice(0, 6)} value={activeMonthKey} onChange={setMonthKey} scrollable />
+      </View>
+      <Text style={styles.month}>{monthLabel(monthDate)}</Text>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {txs.map((tx) => (
           <Pressable
