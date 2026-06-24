@@ -1,0 +1,3 @@
+# Convenience wrapper — runs the stack in docker/
+include:
+  - path: docker/docker-compose.yml

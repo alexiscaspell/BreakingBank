@@ -1,0 +1,114 @@
+# Builds the Android APK and publishes a GitHub Release when mobile code changes on main.
+#
+# Versioning: PaulHatch/semantic-version reads conventional commits since the last
+# apk-v* tag (only commits touching apps/mobile). Examples:
+#   feat(mobile): ...  -> minor bump
+#   fix: ...            -> patch bump
+#   feat!: ...          -> major bump (or BREAKING CHANGE in body)
+# If no conventional bump is detected, patch is incremented so each release gets a new APK.
+#
+# Required repository secrets:
+#   DOCKERHUB_USERNAME / DOCKERHUB_TOKEN — not needed here (APK goes to GitHub Releases)
+#
+# Recommended repository variables (Settings → Actions → Variables):
+#   EXPO_PUBLIC_API_URL
+#   EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID     — Web OAuth client (used as webClientId on Android too)
+#   EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID — Android OAuth client from Google Cloud Console
+#                                        (reference / future use; native sign-in also needs
+#                                         package com.breakingbank.app + APK SHA-1 in Console)
+
+name: Mobile APK Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/mobile-apk.yml"
+      - "scripts/ci-bump-apk-version.sh"
+
+concurrency:
+  group: mobile-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate semver from conventional commits
+        id: semver
+        uses: PaulHatch/semantic-version@v5.4.0
+        with:
+          tag_prefix: apk-v
+          major_pattern: "(BREAKING CHANGE|!)"
+          minor_pattern: "feat(\\(.+\\))?:"
+          patch_pattern: "(fix|perf|refactor|chore)(\\(.+\\))?:"
+          change_path: apps/mobile
+          version_format: "${major}.${minor}.${patch}"
+
+      - name: Resolve release version
+        id: version
+        run: |
+          VERSION="${{ steps.semver.outputs.version }}"
+          INCREMENT="${{ steps.semver.outputs.increment }}"
+
+          if [ -z "$VERSION" ] || [ "$VERSION" = "0.0.0" ]; then
+            VERSION="1.0.0"
+          fi
+
+          if [ "$INCREMENT" = "none" ]; then
+            IFS=. read -r MAJOR MINOR PATCH <<<"$VERSION"
+            PATCH=$((PATCH + 1))
+            VERSION="${MAJOR}.${MINOR}.${PATCH}"
+            echo "No conventional bump; defaulting to patch: $VERSION"
+          fi
+
+          echo "version=$VERSION" >>"$GITHUB_OUTPUT"
+          echo "tag=apk-v$VERSION" >>"$GITHUB_OUTPUT"
+
+      - name: Apply version to Expo app
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq jq
+          ./scripts/ci-bump-apk-version.sh "${{ steps.version.outputs.version }}"
+
+      - name: Build release APK (Docker)
+        env:
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ vars.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ vars.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
+        run: |
+          API_URL="${EXPO_PUBLIC_API_URL:-https://api.breakingbank.example}"
+          GOOGLE_WEB_ID="${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID:-}"
+          GOOGLE_ANDROID_ID="${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID:-}"
+          mkdir -p build/android
+          docker build \
+            -f apps/mobile/Dockerfile.apk \
+            --build-arg "EXPO_PUBLIC_API_URL=${API_URL}" \
+            --build-arg "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${GOOGLE_WEB_ID}" \
+            --build-arg "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${GOOGLE_ANDROID_ID}" \
+            --build-arg "BUILD_TYPE=release" \
+            -t breakingbank-apk:ci \
+            apps/mobile
+          CID="breakingbank-apk-$$"
+          docker create --name "$CID" breakingbank-apk:ci
+          docker cp "$CID:/output/." build/android/
+          docker rm "$CID"
+          ls -la build/android/
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: BreakingBank ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            build/android/breakingbank-release.apk
+          fail_on_unmatched_files: true

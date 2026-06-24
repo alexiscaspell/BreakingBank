@@ -1,0 +1,13 @@
+{
+  "name": "spend-tracker",
+  "private": true,
+  "scripts": {
+    "docker:up": "./scripts/docker-up.sh",
+    "docker:down": "./scripts/docker-down.sh",
+    "docker:build": "./scripts/docker-build.sh",
+    "build:apk": "./scripts/build-apk-docker.sh",
+    "mobile": "cd apps/mobile && npm start",
+    "mobile:web": "cd apps/mobile && npm run web",
+    "mobile:android": "cd apps/mobile && npm run android"
+  }
+}
