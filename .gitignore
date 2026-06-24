@@ -6,4 +6,6 @@ __pycache__/
 *.pyc
 .env
 *.db
+*.xlsx
+*.csv
 .DS_Store
