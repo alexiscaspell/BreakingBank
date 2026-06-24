@@ -130,8 +130,8 @@ export default function LoginScreen() {
       <Button
         label={loading ? "..." : t("login.google")}
         variant="outlined"
-        onPress={() => googleSignIn().catch(console.error)}
-        disabled={loading || (Platform.OS === "web" && !webGooglePrompt)}
+        onPress={googleSignIn}
+        disabled={loading || !webGooglePrompt}
         fullWidth
       />
 

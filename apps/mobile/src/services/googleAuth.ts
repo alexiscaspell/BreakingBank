@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
@@ -9,6 +10,15 @@ const WEB_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ??
   "760898317345-flj067csob9df2orbf6jssr3eqs5pta7.apps.googleusercontent.com";
 
+/** Browser OAuth redirect baked into release APKs (add to Web client redirect URIs in Google Cloud). */
+export const GOOGLE_REDIRECT_URI = AuthSession.makeRedirectUri({
+  scheme: "breakingbank",
+  path: "oauthredirect",
+  native: "com.breakingbank.app:/oauthredirect",
+});
+
+export type GooglePrompt = ReturnType<typeof useGoogleWebAuth>[2];
+
 let configured = false;
 
 function ensureNativeConfigured() {
@@ -18,6 +28,16 @@ function ensureNativeConfigured() {
     offlineAccess: false,
   });
   configured = true;
+}
+
+function mapGoogleError(err: unknown): never {
+  const message = err instanceof Error ? err.message : String(err);
+  if (message.includes("DEVELOPER_ERROR")) {
+    throw new Error(
+      "Google Sign-In is not configured for this APK signing key. Add the APK SHA-1 fingerprint to your Android OAuth client in Google Cloud Console."
+    );
+  }
+  throw err instanceof Error ? err : new Error(message);
 }
 
 export async function signInWithGoogleNative(): Promise<string> {
@@ -41,20 +61,25 @@ export async function signInWithGoogleNative(): Promise<string> {
     if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
       throw new Error("Google Play Services no está disponible");
     }
-    throw e;
+    mapGoogleError(e);
   }
 }
 
+/** Browser-based Google OAuth (Web client ID). Works on Android without native SHA-1 setup. */
 export function useGoogleWebAuth() {
-  return Google.useIdTokenAuthRequest({
-    clientId: WEB_CLIENT_ID,
-    webClientId: WEB_CLIENT_ID,
-  });
+  return Google.useAuthRequest(
+    {
+      clientId: WEB_CLIENT_ID,
+      webClientId: WEB_CLIENT_ID,
+      redirectUri: GOOGLE_REDIRECT_URI,
+      responseType: AuthSession.ResponseType.IdToken,
+      scopes: ["openid", "profile", "email"],
+    },
+    { scheme: "breakingbank", path: "oauthredirect" }
+  );
 }
 
-export async function signInWithGoogleWeb(
-  promptAsync: ReturnType<typeof Google.useIdTokenAuthRequest>[2]
-): Promise<string> {
+export async function signInWithGoogleWeb(promptAsync: GooglePrompt): Promise<string> {
   const result = await promptAsync();
   if (result.type === "cancel" || result.type === "dismiss") {
     throw new Error("CANCELLED");
@@ -67,11 +92,10 @@ export async function signInWithGoogleWeb(
   return idToken;
 }
 
-export async function signInWithGoogle(
-  webPrompt?: ReturnType<typeof Google.useIdTokenAuthRequest>[2]
-): Promise<string> {
-  if (Platform.OS === "web") {
-    if (!webPrompt) throw new Error("Web Google auth not ready");
+export async function signInWithGoogle(webPrompt?: GooglePrompt): Promise<string> {
+  // Android sideload builds use the debug keystore; browser OAuth avoids SHA-1 mismatch (DEVELOPER_ERROR).
+  if (Platform.OS === "web" || Platform.OS === "android") {
+    if (!webPrompt) throw new Error("Google auth not ready");
     return signInWithGoogleWeb(webPrompt);
   }
   return signInWithGoogleNative();

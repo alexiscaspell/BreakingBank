@@ -2,7 +2,7 @@
   "expo": {
     "name": "BreakingBank",
     "slug": "breakingbank",
-    "version": "0.0.1",
+    "version": "0.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.breakingbank.app",
-      "versionCode": 1,
+      "versionCode": 5,
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#0d1f12",
@@ -36,7 +36,12 @@
       "expo-secure-store",
       "expo-web-browser",
       "@react-native-community/datetimepicker",
-      "@react-native-google-signin/google-signin",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.760898317345-flj067csob9df2orbf6jssr3eqs5pta7"
+        }
+      ],
       "expo-localization"
     ],
     "scheme": "breakingbank",
