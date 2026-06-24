@@ -1,0 +1,109 @@
+import { useCallback, useMemo, useState } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { router, useFocusEffect } from "expo-router";
+import { deleteTransaction, listTransactions, type Transaction } from "../../src/data";
+import { CategoryIcon } from "../../src/components/CategoryIcon";
+import { Fab } from "../../src/components/Fab";
+import { TypeTabs } from "../../src/components/TypeTabs";
+import { AppBar } from "../../src/components/material/AppBar";
+import { Surface } from "../../src/components/material/Surface";
+import { useLocale } from "../../src/contexts/LocaleContext";
+import { useTheme } from "../../src/contexts/ThemeContext";
+import { formatMoney, monthLabel } from "../../src/utils/format";
+import { shape } from "../../src/theme/shape";
+
+export default function TransactionsScreen() {
+  const { colors } = useTheme();
+  const { t } = useLocale();
+  const [type, setType] = useState<"expense" | "income">("expense");
+  const [txs, setTxs] = useState<Transaction[]>([]);
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+  const load = useCallback(async () => {
+    setTxs(await listTransactions({ type, from: start, to: end }));
+  }, [type, start, end]);
+
+  useFocusEffect(useCallback(() => { load().catch(console.error); }, [load]));
+  const total = txs.reduce((s, t) => s + t.amount, 0);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.background },
+        month: { color: colors.textSecondary, textAlign: "center", marginVertical: 8, fontSize: 13 },
+        card: { flexDirection: "row", gap: 12, marginHorizontal: 16, marginBottom: 8, padding: 14, alignItems: "flex-start" },
+        cat: { color: colors.text, fontWeight: "700", fontSize: 15 },
+        tags: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 4 },
+        tag: {
+          color: colors.accent,
+          backgroundColor: colors.accentContainer,
+          borderRadius: shape.full,
+          paddingHorizontal: 8,
+          paddingVertical: 3,
+          fontSize: 11,
+          fontWeight: "600",
+        },
+        comment: { color: colors.textSecondary, marginTop: 4, fontSize: 12 },
+        amount: { color: colors.text, fontWeight: "700", fontSize: 15 },
+      }),
+    [colors]
+  );
+
+  const remove = (tx: Transaction) => {
+    Alert.alert(t("transactions.deleteTitle"), t("transactions.deleteMsg"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("common.delete"),
+        style: "destructive",
+        onPress: async () => {
+          await deleteTransaction(tx.id);
+          load();
+        },
+      },
+    ]);
+  };
+
+  return (
+    <View style={styles.container}>
+      <AppBar title={t("nav.transactions")} subtitle={`${t("common.total")}: ${formatMoney(total)}`} large />
+      <TypeTabs value={type} onChange={setType} />
+      <Text style={styles.month}>{monthLabel(now)}</Text>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        {txs.map((tx) => (
+          <Pressable
+            key={tx.id}
+            onPress={() => router.push({ pathname: "/add-transaction", params: { id: tx.id, type: tx.type } })}
+            onLongPress={() => remove(tx)}
+          >
+            <Surface style={styles.card} radius={shape.md}>
+              {tx.category && (
+                <CategoryIcon
+                  iconType={tx.category.icon_type}
+                  iconKey={tx.category.icon_key}
+                  iconStorageKey={tx.category.icon_storage_key}
+                  color={tx.category.color}
+                  size={40}
+                />
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cat}>{tx.category?.name ?? t("common.noCategory")}</Text>
+                <View style={styles.tags}>
+                  {(tx.labels ?? []).map((l) => (
+                    <Text key={l.name} style={styles.tag}>
+                      {l.name}
+                    </Text>
+                  ))}
+                </View>
+                {tx.comment ? <Text style={styles.comment}>{tx.comment}</Text> : null}
+              </View>
+              <Text style={styles.amount}>{formatMoney(tx.amount)}</Text>
+            </Surface>
+          </Pressable>
+        ))}
+      </ScrollView>
+      <Fab onPress={() => router.push({ pathname: "/add-transaction", params: { type } })} />
+    </View>
+  );
+}

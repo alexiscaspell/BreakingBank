@@ -15,7 +15,7 @@ cd "$ROOT/docker"
 docker compose --env-file "$ENV_FILE" up --build -d "$@"
 
 echo ""
-echo "Spend Tracker stack is running:"
+echo "BreakingBank stack is running:"
 echo "  Web:  http://localhost:${WEB_PORT:-8080}"
 echo "  API:  http://localhost:8000"
 echo "  Docs: http://localhost:8000/docs"

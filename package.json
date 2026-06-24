@@ -1,5 +1,5 @@
 {
-  "name": "spend-tracker",
+  "name": "breakingbank",
   "private": true,
   "scripts": {
     "docker:up": "./scripts/docker-up.sh",

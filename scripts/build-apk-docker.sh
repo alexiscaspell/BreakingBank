@@ -8,7 +8,7 @@ OUTPUT="${OUTPUT:-$ROOT/build/android}"
 # 10.0.2.2 = host machine from Android emulator; use your LAN IP for a physical device.
 API_URL="${EXPO_PUBLIC_API_URL:-http://10.0.2.2:8000}"
 BUILD_TYPE="${BUILD_TYPE:-release}"
-IMAGE="${IMAGE:-spend-tracker-apk-builder}"
+IMAGE="${IMAGE:-breakingbank-apk-builder}"
 GOOGLE_WEB_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID:-}"
 GOOGLE_ANDROID_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID:-}"
 
@@ -16,7 +16,7 @@ usage() {
   cat <<EOF
 Usage: $(basename "$0") [options]
 
-Build Spend Tracker APK using Docker.
+Build BreakingBank APK using Docker.
 
 Options:
   --api-url URL     EXPO_PUBLIC_API_URL baked into the app (default: $API_URL)

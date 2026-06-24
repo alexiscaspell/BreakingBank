@@ -20,6 +20,15 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
+if [ ! -f "$APP_JSON" ]; then
+  echo "Missing $APP_JSON — ensure apps/mobile is committed as normal files, not a git submodule." >&2
+  exit 1
+fi
+if [ ! -f "$PKG_JSON" ]; then
+  echo "Missing $PKG_JSON" >&2
+  exit 1
+fi
+
 tmp="$(mktemp)"
 jq --arg v "$VERSION" --argjson code "$VERSION_CODE" \
   '.expo.version = $v | .expo.android.versionCode = $code' \
