@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.deps import get_current_group, get_current_user, require_group_editor
+from app.models.group import Group
+from app.models.user import User
 from app.services.spreadsheet import (
     export_month,
     import_transactions,
