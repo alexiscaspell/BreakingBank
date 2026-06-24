@@ -33,6 +33,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   release:
@@ -50,7 +51,6 @@ jobs:
           tag_prefix: apk-v
           major_pattern: "(BREAKING CHANGE|!)"
           minor_pattern: "feat(\\(.+\\))?:"
-          patch_pattern: "(fix|perf|refactor|chore)(\\(.+\\))?:"
           change_path: apps/mobile
           version_format: "${major}.${minor}.${patch}"
 
@@ -79,24 +79,31 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq jq
           ./scripts/ci-bump-apk-version.sh "${{ steps.version.outputs.version }}"
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build release APK (Docker)
         env:
           EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
           EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ vars.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
           EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ vars.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/mobile
+          file: apps/mobile/Dockerfile.apk
+          load: true
+          tags: breakingbank-apk:ci
+          build-args: |
+            EXPO_PUBLIC_API_URL=${{ env.EXPO_PUBLIC_API_URL || 'https://api.breakingbank.example' }}
+            EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
+            EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${{ env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
+            BUILD_TYPE=release
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract APK from image
         run: |
-          API_URL="${EXPO_PUBLIC_API_URL:-https://api.breakingbank.example}"
-          GOOGLE_WEB_ID="${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID:-}"
-          GOOGLE_ANDROID_ID="${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID:-}"
           mkdir -p build/android
-          docker build \
-            -f apps/mobile/Dockerfile.apk \
-            --build-arg "EXPO_PUBLIC_API_URL=${API_URL}" \
-            --build-arg "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${GOOGLE_WEB_ID}" \
-            --build-arg "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${GOOGLE_ANDROID_ID}" \
-            --build-arg "BUILD_TYPE=release" \
-            -t breakingbank-apk:ci \
-            apps/mobile
           CID="breakingbank-apk-$$"
           docker create --name "$CID" breakingbank-apk:ci
           docker cp "$CID:/output/." build/android/

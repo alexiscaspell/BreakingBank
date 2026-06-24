@@ -28,8 +28,7 @@ export default function LoginScreen() {
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background, padding: 24, justifyContent: "center" },
-        logo: { width: 180, height: 180, alignSelf: "center", marginBottom: 20, borderRadius: 36 },
-        title: { color: colors.text, fontSize: 28, fontWeight: "700", textAlign: "center", marginBottom: 32 },
+        logo: { width: 280, height: 280, alignSelf: "center", marginBottom: 32 },
         input: {
           backgroundColor: colors.card,
           color: colors.text,
@@ -88,7 +87,6 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <Image source={require("../assets/icon.png")} style={styles.logo} resizeMode="contain" />
-      <Text style={styles.title}>{t("login.title")}</Text>
       {isRegister && (
         <TextInput
           style={styles.input}
