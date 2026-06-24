@@ -10,7 +10,7 @@ import { AppBar } from "../../src/components/material/AppBar";
 import { Surface } from "../../src/components/material/Surface";
 import { useLocale } from "../../src/contexts/LocaleContext";
 import { useTheme } from "../../src/contexts/ThemeContext";
-import { formatMoney, monthLabel } from "../../src/utils/format";
+import { formatMoney } from "../../src/utils/format";
 import { monthBoundsFromKey, monthOptions } from "../../src/utils/period";
 import { shape } from "../../src/theme/shape";
 
@@ -23,8 +23,7 @@ export default function TransactionsScreen() {
   const [monthKey, setMonthKey] = useState("");
   const activeMonthKey = monthKey || months[0]?.key || "";
   const { start, end } = useMemo(() => monthBoundsFromKey(activeMonthKey), [activeMonthKey]);
-  const [year, month] = activeMonthKey.split("-").map(Number);
-  const monthDate = new Date(year, month - 1, 1);
+  const activeMonth = months.find((m) => m.key === activeMonthKey);
 
   const load = useCallback(async () => {
     setTxs(await listTransactions({ type, from: start, to: end }));
@@ -76,9 +75,9 @@ export default function TransactionsScreen() {
       <AppBar title={t("nav.transactions")} subtitle={`${t("common.total")}: ${formatMoney(total)}`} large />
       <TypeTabs value={type} onChange={setType} />
       <View style={styles.monthRow}>
-        <ChipGroup items={months.slice(0, 6)} value={activeMonthKey} onChange={setMonthKey} scrollable />
+        <ChipGroup items={months.slice(0, 12)} value={activeMonthKey} onChange={setMonthKey} scrollable />
       </View>
-      <Text style={styles.month}>{monthLabel(monthDate)}</Text>
+      <Text style={styles.month}>{activeMonth?.fullLabel ?? ""}</Text>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {txs.map((tx) => (
           <Pressable

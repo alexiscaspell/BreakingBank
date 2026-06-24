@@ -40,10 +40,9 @@ export function WebSidebar() {
       paddingTop: 16,
       paddingBottom: 16,
     },
-    brand: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingBottom: 20 },
-    logo: { width: 56, height: 56, borderRadius: shape.md },
-    brandText: { color: colors.text, fontWeight: "700", fontSize: 18 },
-    group: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
+    brand: { alignItems: "center", paddingHorizontal: 20, paddingBottom: 20, gap: 8 },
+    logo: { width: 96, height: 96 },
+    group: { color: colors.textSecondary, fontSize: 12, textAlign: "center" },
     navItem: {
       flexDirection: "row",
       alignItems: "center",
@@ -71,10 +70,7 @@ export function WebSidebar() {
     <View style={styles.sidebar}>
       <View style={styles.brand}>
         <Image source={require("../../assets/icon.png")} style={styles.logo} resizeMode="contain" />
-        <View>
-          <Text style={styles.brandText}>{t("login.title")}</Text>
-          {activeGroup ? <Text style={styles.group}>{activeGroup.name}</Text> : null}
-        </View>
+        {activeGroup ? <Text style={styles.group}>{activeGroup.name}</Text> : null}
       </View>
       <ScrollView>
         {nav.map((item) => {

@@ -6,3 +6,5 @@ dist
 android
 ios
 build-output
+# CI restores this from actions/cache before docker build
+!.gradle-home

@@ -79,6 +79,15 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq jq
           ./scripts/ci-bump-apk-version.sh "${{ steps.version.outputs.version }}"
 
+      - name: Restore Gradle cache
+        uses: actions/cache/restore@v4
+        id: gradle-cache
+        with:
+          path: apps/mobile/.gradle-home
+          key: gradle-${{ hashFiles('apps/mobile/package-lock.json') }}
+          restore-keys: |
+            gradle-
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -98,17 +107,26 @@ jobs:
             EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
             EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${{ env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
             BUILD_TYPE=release
+          # mode=min: cache SDK/npm layers only; Gradle uses actions/cache (exec mounts are not exported to GHA).
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=min
 
-      - name: Extract APK from image
+      - name: Extract APK and Gradle cache from image
         run: |
-          mkdir -p build/android
+          mkdir -p build/android apps/mobile/.gradle-home
           CID="breakingbank-apk-$$"
           docker create --name "$CID" breakingbank-apk:ci
           docker cp "$CID:/output/." build/android/
+          docker cp "$CID:/app/.gradle-home/." apps/mobile/.gradle-home/ 2>/dev/null || true
           docker rm "$CID"
           ls -la build/android/
+
+      - name: Save Gradle cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: apps/mobile/.gradle-home
+          key: gradle-${{ hashFiles('apps/mobile/package-lock.json') }}
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2

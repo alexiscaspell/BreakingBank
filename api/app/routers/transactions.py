@@ -17,7 +17,7 @@ from app.schemas.common import TransactionCreate, TransactionResponse, Transacti
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
-async def load_transaction(db: AsyncSession, txn_id: str, user_id: str) -> Transaction:
+async def load_transaction(db: AsyncSession, txn_id: str, group_id: str) -> Transaction:
     result = await db.execute(
         select(Transaction)
         .options(
@@ -26,7 +26,7 @@ async def load_transaction(db: AsyncSession, txn_id: str, user_id: str) -> Trans
             selectinload(Transaction.category),
             selectinload(Transaction.account),
         )
-        .where(Transaction.id == txn_id, Transaction.user_id == user_id, Transaction.deleted_at.is_(None))
+        .where(Transaction.id == txn_id, Transaction.group_id == group_id, Transaction.deleted_at.is_(None))
     )
     txn = result.scalar_one_or_none()
     if not txn:
@@ -82,7 +82,7 @@ async def set_labels(db: AsyncSession, txn: Transaction, label_ids: list[str]):
     await db.execute(delete(TransactionLabel).where(TransactionLabel.transaction_id == txn.id))
     for lid in label_ids:
         label = await db.get(Label, lid)
-        if label and label.user_id == txn.user_id:
+        if label and label.group_id == txn.group_id:
             db.add(TransactionLabel(transaction_id=txn.id, label_id=lid))
 
 
@@ -136,17 +136,17 @@ async def create_transaction(body: TransactionCreate, group: Group = Depends(get
     await db.flush()
     await set_labels(db, txn, body.label_ids)
     await db.commit()
-    return serialize(await load_transaction(db, txn.id, user.id))
+    return serialize(await load_transaction(db, txn.id, group.id))
 
 
 @router.get("/{transaction_id}", response_model=TransactionResponse)
 async def get_transaction(transaction_id: str, group: Group = Depends(get_current_group), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return serialize(await load_transaction(db, transaction_id, user.id))
+    return serialize(await load_transaction(db, transaction_id, group.id))
 
 
 @router.put("/{transaction_id}", response_model=TransactionResponse)
 async def update_transaction(transaction_id: str, body: TransactionUpdate, group: Group = Depends(get_current_group), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    txn = await load_transaction(db, transaction_id, user.id)
+    txn = await load_transaction(db, transaction_id, group.id)
     data = body.model_dump(exclude_unset=True)
     label_ids = data.pop("label_ids", None)
     for field, value in data.items():
@@ -154,12 +154,12 @@ async def update_transaction(transaction_id: str, body: TransactionUpdate, group
     if label_ids is not None:
         await set_labels(db, txn, label_ids)
     await db.commit()
-    return serialize(await load_transaction(db, txn.id, user.id))
+    return serialize(await load_transaction(db, txn.id, group.id))
 
 
 @router.delete("/{transaction_id}")
 async def delete_transaction(transaction_id: str, group: Group = Depends(get_current_group), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    txn = await load_transaction(db, transaction_id, user.id)
+    txn = await load_transaction(db, transaction_id, group.id)
     txn.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     return {"ok": True}

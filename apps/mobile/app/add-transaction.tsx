@@ -57,6 +57,7 @@ export default function AddTransactionScreen() {
   const { t, tf } = useLocale();
 
   useEffect(() => {
+    if (editingId) return;
     Promise.all([listCategories(type), listAccounts(), listLabels()])
       .then(([cats, accs, labs]) => {
         setCategories(cats);
@@ -66,7 +67,7 @@ export default function AddTransactionScreen() {
         setSelectedAccount((prev) => (accs.some((a) => a.id === prev) ? prev : accs[0]?.id ?? null));
       })
       .catch(console.error);
-  }, [type]);
+  }, [type, editingId]);
 
   useEffect(() => {
     if (currencyReady) setEntryCurrency(defaultCurrency);
@@ -74,9 +75,24 @@ export default function AddTransactionScreen() {
 
   useEffect(() => {
     if (!editingId || !currencyReady) return;
-    getTransaction(editingId).then((txn) => {
-      if (!txn) return;
+    let cancelled = false;
+    (async () => {
+      const txn = await getTransaction(editingId);
+      if (cancelled) return;
+      if (!txn) {
+        setError(t("addTx.notFound"));
+        return;
+      }
+      const [cats, accs, labs] = await Promise.all([
+        listCategories(txn.type as "expense" | "income"),
+        listAccounts(),
+        listLabels(),
+      ]);
+      if (cancelled) return;
       setType(txn.type as "expense" | "income");
+      setCategories(cats);
+      setAccounts(accs);
+      setLabels(labs);
       setDate(txn.date);
       setComment(txn.comment ?? "");
       setSelectedAccount(txn.account_id);
@@ -84,8 +100,11 @@ export default function AddTransactionScreen() {
       setSelectedLabels((txn.labels ?? []).map((l) => l.id));
       setEntryCurrency(defaultCurrency);
       setAmount(formatAmountInput(convertFromBase(txn.amount, defaultCurrency), defaultCurrency));
-    }).catch(console.error);
-  }, [editingId, currencyReady, defaultCurrency]);
+    })().catch(console.error);
+    return () => {
+      cancelled = true;
+    };
+  }, [editingId, currencyReady, defaultCurrency, t]);
 
   const toggleLabel = (id: string) =>
     setSelectedLabels((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));

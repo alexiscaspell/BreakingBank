@@ -1,6 +1,7 @@
+import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
-import { colors } from "../theme/colors";
+import { useTheme } from "../contexts/ThemeContext";
 import { formatMoney } from "../utils/format";
 
 type Slice = { value: number; color: string };
@@ -13,19 +14,32 @@ type Props = {
 };
 
 export function DonutChart({ data, total, radius = 90, innerRadius = 60 }: Props) {
-  const slices = data.length ? data : [{ value: 1, color: colors.border }];
+  const { colors } = useTheme();
+  const slices = useMemo(() => {
+    if (!data.length) return [{ value: 1, color: colors.border }];
+    return data.map((slice) => ({
+      value: slice.value,
+      color: slice.color || colors.accent,
+      strokeWidth: 2,
+      strokeColor: colors.background,
+    }));
+  }, [data, colors.background, colors.border, colors.accent]);
 
   return (
     <PieChart
+      key={slices.map((s) => `${s.color}-${s.value}`).join("|")}
       data={slices}
       donut
       radius={radius}
       innerRadius={innerRadius}
-      centerLabelComponent={() => <Text style={styles.center}>{formatMoney(total, true)}</Text>}
+      isAnimated={false}
+      showText={false}
+      showValuesAsLabels={false}
+      centerLabelComponent={() => <Text style={[styles.center, { color: colors.text }]}>{formatMoney(total, true)}</Text>}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  center: { color: colors.text, fontWeight: "700", fontSize: 16 },
+  center: { fontWeight: "700", fontSize: 16 },
 });

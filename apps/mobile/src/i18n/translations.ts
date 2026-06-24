@@ -30,7 +30,7 @@ export const es = {
   "period.week": "Semana",
   "period.month": "Mes",
   "period.year": "Año",
-  "period.custom": "Período",
+  "period.total": "Total",
 
   "theme.light": "Claro",
   "theme.dark": "Oscuro",
@@ -169,6 +169,7 @@ export const es = {
   "addTx.selectAccount": "Seleccioná una cuenta",
   "addTx.invalidAmount": "Monto inválido",
   "addTx.saveFailed": "Error al guardar",
+  "addTx.notFound": "No se encontró el movimiento",
   "addTx.selectCategory": "Seleccioná una categoría de {kind}",
   "addTx.expenseKind": "gasto",
   "addTx.incomeKind": "ingreso",
@@ -203,7 +204,7 @@ export const en = {
   "period.week": "Week",
   "period.month": "Month",
   "period.year": "Year",
-  "period.custom": "Period",
+  "period.total": "Total",
 
   "theme.light": "Light",
   "theme.dark": "Dark",
@@ -342,6 +343,7 @@ export const en = {
   "addTx.selectAccount": "Select an account",
   "addTx.invalidAmount": "Invalid amount",
   "addTx.saveFailed": "Could not save",
+  "addTx.notFound": "Transaction not found",
   "addTx.selectCategory": "Select a {kind} category",
   "addTx.expenseKind": "expense",
   "addTx.incomeKind": "income",

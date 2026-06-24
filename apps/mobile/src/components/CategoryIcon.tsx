@@ -42,21 +42,24 @@ export function CategoryIcon({ iconType, iconKey, iconStorageKey, color, size = 
   }, [iconType, iconStorageKey, localUri]);
 
   const showImage = (iconType === "custom" || iconType === "url") && uri;
+  const radius = size / 2;
+
+  if (showImage) {
+    return (
+      <View style={[styles.imageWrap, { width: size, height: size, borderRadius: radius }]}>
+        <Image source={{ uri }} style={{ width: size, height: size, borderRadius: radius }} resizeMode="cover" />
+      </View>
+    );
+  }
 
   return (
-    <View style={[styles.circle, { backgroundColor: color, width: size, height: size, borderRadius: size / 2 }]}>
-      {showImage ? (
-        <Image
-          source={{ uri }}
-          style={{ width: size * 0.55, height: size * 0.55, borderRadius: size * 0.275 }}
-        />
-      ) : (
-        <MaterialCommunityIcons name={iconName} size={size * 0.5} color="#fff" />
-      )}
+    <View style={[styles.circle, { backgroundColor: color, width: size, height: size, borderRadius: radius }]}>
+      <MaterialCommunityIcons name={iconName} size={size * 0.5} color="#fff" />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   circle: { alignItems: "center", justifyContent: "center" },
+  imageWrap: { overflow: "hidden" },
 });

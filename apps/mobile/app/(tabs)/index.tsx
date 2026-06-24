@@ -17,8 +17,7 @@ import { useGroup } from "../../src/contexts/GroupContext";
 import { useLocale } from "../../src/contexts/LocaleContext";
 import type { PeriodKey } from "../../src/i18n";
 import { formatMoney, monthLabel } from "../../src/utils/format";
-import { periodBounds } from "../../src/utils/period";
-import { monthBoundsFromKey, monthOptions } from "../../src/utils/period";
+import { periodBounds, monthBoundsFromKey, monthOptions } from "../../src/utils/period";
 import { shape } from "../../src/theme/shape";
 
 type Summary = {
@@ -50,15 +49,17 @@ export default function HomeScreen() {
     if (period === "month" && activeMonthKey) return monthBoundsFromKey(activeMonthKey);
     return periodBounds(period, now);
   }, [period, activeMonthKey, now.getMonth(), now.getFullYear(), now.getDate()]);
-  const periodLabel = useMemo(() => {
+  const periodSubtitle = useMemo(() => {
     if (period === "month" && activeMonthKey) {
-      const [y, m] = activeMonthKey.split("-").map(Number);
-      return monthLabel(new Date(y, m - 1, 1));
+      const match = months.find((m) => m.key === activeMonthKey);
+      return match?.fullLabel ?? monthLabel(new Date());
     }
     if (period === "year") return String(now.getFullYear());
+    if (period === "total") return t("period.total");
     if (period === "day") return monthLabel(now);
-    return `${start} — ${end}`;
-  }, [period, activeMonthKey, start, end, now]);
+    if (period === "week") return `${start} — ${end}`;
+    return "";
+  }, [period, activeMonthKey, months, now, start, end, t]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -78,21 +79,23 @@ export default function HomeScreen() {
   }, [type, start, end, selectedAccountId]);
 
   useFocusEffect(useCallback(() => { load().catch(console.error); }, [load]));
-  const pieData = (summary?.by_category ?? []).slice(0, 6).map((c) => ({ value: c.total, color: c.color }));
+  const pieData = (summary?.by_category ?? []).map((c) => ({ value: c.total, color: c.color }));
 
   const selectedAccount = selectedAccountId ? accounts.find((a) => a.id === selectedAccountId) : null;
-  const headerBalance = selectedAccount ? selectedAccount.balance : accounts.reduce((s, a) => s + a.balance, 0);
   const headerLabel = selectedAccount?.name ?? t("common.allAccounts");
+  const headerAmount = summary?.total ?? 0;
 
   const styles = useMemo(
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
-        balanceCard: { margin: 16, padding: 20, alignItems: "center", gap: 8 },
+        balanceCard: { margin: 16, padding: 20, alignItems: "center", gap: 4 },
         accountBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
         accountLabel: { color: colors.accent, fontSize: 14, fontWeight: "600" },
+        spentLabel: { color: colors.textSecondary, fontSize: 13, marginTop: 4 },
         balance: { color: colors.text, fontSize: 32, fontWeight: "800", letterSpacing: -0.5 },
-        month: { color: colors.textSecondary, textAlign: "center", fontSize: 13, marginBottom: 8 },
+        periodSubtitle: { color: colors.textSecondary, textAlign: "center", fontSize: 13, marginBottom: 8 },
+        monthSection: { marginBottom: 4 },
         chartCard: { marginHorizontal: 16, marginBottom: 12, padding: 24, alignItems: "center" },
         row: {
           flexDirection: "row",
@@ -125,14 +128,20 @@ export default function HomeScreen() {
           <Text style={styles.accountLabel}>{headerLabel}</Text>
           <MaterialCommunityIcons name="chevron-down" size={18} color={colors.accent} />
         </Pressable>
-        <Text style={styles.balance}>{formatMoney(headerBalance, true)}</Text>
+        <Text style={styles.spentLabel}>
+          {type === "expense" ? t("common.expenses") : t("common.income")} · {periodSubtitle}
+        </Text>
+        <Text style={styles.balance}>{formatMoney(headerAmount, true)}</Text>
       </Surface>
       <TypeTabs value={type} onChange={setType} />
       <PeriodTabs value={period} onChange={setPeriod} />
       {period === "month" ? (
-        <ChipGroup items={months.slice(0, 6)} value={activeMonthKey} onChange={setMonthKey} scrollable />
+        <View style={styles.monthSection}>
+          <ChipGroup items={months.slice(0, 12)} value={activeMonthKey} onChange={setMonthKey} scrollable />
+        </View>
+      ) : periodSubtitle ? (
+        <Text style={styles.periodSubtitle}>{periodSubtitle}</Text>
       ) : null}
-      <Text style={styles.month}>{periodLabel}</Text>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <Surface style={styles.chartCard} radius={shape.lg}>
           <DonutChart data={pieData} total={summary?.total ?? 0} />

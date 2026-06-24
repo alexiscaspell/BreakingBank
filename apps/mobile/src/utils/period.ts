@@ -1,5 +1,5 @@
 import type { PeriodKey } from "../i18n";
-import { monthLabel } from "./format";
+import { monthLabel, shortMonthLabel } from "./format";
 
 function iso(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -33,7 +33,8 @@ export function periodBounds(period: PeriodKey, ref = new Date()): { start: stri
     }
     case "year":
       return { start: `${y}-01-01`, end: `${y}-12-31` };
-    case "custom":
+    case "total":
+      return { start: "1970-01-01", end: "2099-12-31" };
     case "month":
     default:
       return monthBounds(y, m + 1);
@@ -42,11 +43,11 @@ export function periodBounds(period: PeriodKey, ref = new Date()): { start: stri
 
 export function monthOptions(count: number, localeTag: string) {
   const now = new Date();
-  const items: { key: string; label: string }[] = [];
+  const items: { key: string; label: string; fullLabel: string }[] = [];
   for (let i = 0; i < count; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    items.push({ key, label: monthLabel(d) });
+    items.push({ key, label: shortMonthLabel(d), fullLabel: monthLabel(d) });
   }
   return items;
 }

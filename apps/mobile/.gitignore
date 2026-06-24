@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# CI Gradle cache (restored/saved by GitHub Actions)
+.gradle-home/

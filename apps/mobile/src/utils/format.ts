@@ -25,3 +25,9 @@ export function formatMoney(value: number, compact = false): string {
 export function monthLabel(date: Date): string {
   return date.toLocaleDateString(formatLocaleTag, { month: "long", year: "numeric" });
 }
+
+export function shortMonthLabel(date: Date): string {
+  const month = date.toLocaleDateString(formatLocaleTag, { month: "short" });
+  const year = String(date.getFullYear()).slice(-2);
+  return `${month} '${year}`;
+}

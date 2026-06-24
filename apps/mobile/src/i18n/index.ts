@@ -34,7 +34,7 @@ export function t(key: TranslationKey): string {
   return translations[activeLocale][key] ?? translations.en[key] ?? key;
 }
 
-export const PERIOD_KEYS = ["day", "week", "month", "year", "custom"] as const;
+export const PERIOD_KEYS = ["day", "week", "month", "year", "total"] as const;
 export type PeriodKey = (typeof PERIOD_KEYS)[number];
 
 export function periodLabel(key: PeriodKey): string {
