@@ -12,10 +12,7 @@
 #
 # Recommended repository variables (Settings → Actions → Variables):
 #   EXPO_PUBLIC_API_URL
-#   EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID     — Web OAuth client (used as webClientId on Android too)
-#   EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID — Android OAuth client from Google Cloud Console
-#                                        (reference / future use; native sign-in also needs
-#                                         package com.breakingbank.app + APK SHA-1 in Console)
+#   EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID — Android OAuth client (package + SHA-1 in Google Cloud)
 
 name: Mobile APK Release
 
@@ -88,13 +85,27 @@ jobs:
           restore-keys: |
             gradle-
 
+      - name: Prepare Gradle cache for Docker
+        run: |
+          mkdir -p apps/mobile/.gradle-home
+          touch apps/mobile/.gradle-home/.keep
+          if [ "${{ steps.gradle-cache.outputs.cache-hit }}" = "true" ]; then
+            echo "Gradle cache restored ($(du -sh apps/mobile/.gradle-home | cut -f1))"
+          else
+            echo "Gradle cache miss — full Gradle build expected"
+          fi
+          if [ -z "${{ vars.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}" ]; then
+            echo "::warning::EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID repo variable is not set — Google Sign-In will not work in the APK"
+          else
+            echo "Google Android client: ${{ vars.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}"
+          fi
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Build release APK (Docker)
         env:
           EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
-          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ vars.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
           EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ vars.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
         uses: docker/build-push-action@v6
         with:
@@ -104,10 +115,10 @@ jobs:
           tags: breakingbank-apk:ci
           build-args: |
             EXPO_PUBLIC_API_URL=${{ env.EXPO_PUBLIC_API_URL || 'https://api.breakingbank.example' }}
-            EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
             EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${{ env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
             BUILD_TYPE=release
-          # mode=min: cache SDK/npm layers only; Gradle uses actions/cache (exec mounts are not exported to GHA).
+          # mode=min: Docker layer cache for SDK + npm only (~3 min saved).
+          # Gradle (~25 min) uses actions/cache via .gradle-home COPY in Dockerfile.apk.
           cache-from: type=gha
           cache-to: type=gha,mode=min
 

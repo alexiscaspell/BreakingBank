@@ -1,14 +1,16 @@
 # syntax=docker/dockerfile:1
-# Build Android APK via expo prebuild + Gradle (debug APK by default).
+# Build Android APK via expo prebuild + Gradle.
+#
+# Cache strategy:
+# - npm / Android SDK layers: Docker layer cache (GHA cache-to mode=min).
+# - Gradle outputs: seed from apps/mobile/.gradle-home (restored by actions/cache in CI,
+#   persisted locally by scripts/build-apk-docker.sh). Without seeding, every build is ~30 min.
+# - App source is copied after prebuild so JS-only changes skip native project regeneration.
 FROM node:24-bookworm
 
 ARG EXPO_PUBLIC_API_URL=http://10.0.2.2:8000
-ARG EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=
 ARG EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=
 ARG BUILD_TYPE=release
-ENV EXPO_PUBLIC_API_URL=${EXPO_PUBLIC_API_URL}
-ENV EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID}
-ENV EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID}
 ENV CI=1
 ENV EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK=1
 ENV ANDROID_HOME=/opt/android-sdk
@@ -37,7 +39,10 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
-COPY . .
+# Native project shell — changes when deps, app.json, assets, or routes change.
+COPY app.json babel.config.js tsconfig.json index.ts App.tsx network_security_config.xml ./
+COPY assets ./assets
+COPY app ./app
 
 RUN npx expo prebuild --platform android --no-install
 
@@ -53,16 +58,40 @@ RUN mkdir -p android/app/src/main/res/xml \
     && cp /app/network_security_config.xml android/app/src/main/res/xml/network_security_config.xml \
     && sed -i 's/<application/<application android:networkSecurityConfig="@xml\/network_security_config" android:usesCleartextTraffic="true"/' android/app/src/main/AndroidManifest.xml
 
+# App logic — JS-only edits skip prebuild above.
+COPY src ./src
+
+# Bake public env vars into the JS bundle (Metro reads .env during assembleRelease).
+ARG EXPO_PUBLIC_API_URL=http://10.0.2.2:8000
+ARG EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=
+ARG BUILD_TYPE
+RUN printf 'EXPO_PUBLIC_API_URL=%s\nEXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=%s\n' \
+      "${EXPO_PUBLIC_API_URL}" "${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID}" \
+      > /app/.env \
+    && echo "==> Bundle env: EXPO_PUBLIC_API_URL=${EXPO_PUBLIC_API_URL}" \
+    && echo "==> Bundle env: EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID}"
+
+# Gradle cache restored by CI (actions/cache) or kept from prior local builds.
 RUN mkdir -p "${GRADLE_USER_HOME}"
+COPY .gradle-home/ /tmp/gradle-seed/
 
 WORKDIR /app/android
 
-RUN if [ "$BUILD_TYPE" = "release" ]; then \
+RUN --mount=type=cache,target=/tmp/gradle-build-cache,id=breakingbank-gradle,sharing=locked \
+    mkdir -p /tmp/gradle-build-cache /app/.gradle-home && \
+    if [ "$(find /tmp/gradle-build-cache -mindepth 1 2>/dev/null | wc -l)" -eq 0 ] \
+       && [ "$(find /tmp/gradle-seed -mindepth 1 2>/dev/null | wc -l)" -gt 0 ]; then \
+      echo "==> Seeding Gradle cache from .gradle-home ($(du -sh /tmp/gradle-seed | cut -f1))"; \
+      cp -a /tmp/gradle-seed/. /tmp/gradle-build-cache/; \
+    fi && \
+    export GRADLE_USER_HOME=/tmp/gradle-build-cache && \
+    if [ "$BUILD_TYPE" = "release" ]; then \
       ./gradlew assembleRelease --no-daemon --build-cache; \
     else \
       cd .. && npx expo export:embed --eager --platform android --dev false && cd android && \
       ./gradlew assembleDebug --no-daemon --build-cache; \
-    fi
+    fi && \
+    cp -a /tmp/gradle-build-cache/. /app/.gradle-home/
 
 RUN mkdir -p /output \
     && if [ "$BUILD_TYPE" = "release" ]; then \

@@ -10,9 +10,9 @@ OUTPUT="${OUTPUT:-$ROOT/build/android}"
 API_URL="${EXPO_PUBLIC_API_URL:-http://10.0.2.2:8000}"
 BUILD_TYPE="${BUILD_TYPE:-release}"
 IMAGE="${IMAGE:-breakingbank-apk-builder}"
-GOOGLE_WEB_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID:-}"
 GOOGLE_ANDROID_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID:-}"
 CLI_API_URL="${EXPO_PUBLIC_API_URL:-}"
+CLI_GOOGLE_ANDROID_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID:-}"
 NO_CACHE=0
 
 if [[ -f "$ENV_FILE" ]]; then
@@ -21,11 +21,13 @@ if [[ -f "$ENV_FILE" ]]; then
   source "$ENV_FILE"
   set +a
   API_URL="${EXPO_PUBLIC_API_URL:-$API_URL}"
-  GOOGLE_WEB_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID:-$GOOGLE_WEB_CLIENT_ID}"
   GOOGLE_ANDROID_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID:-$GOOGLE_ANDROID_CLIENT_ID}"
 fi
 if [[ -n "$CLI_API_URL" ]]; then
   API_URL="$CLI_API_URL"
+fi
+if [[ -n "$CLI_GOOGLE_ANDROID_CLIENT_ID" ]]; then
+  GOOGLE_ANDROID_CLIENT_ID="$CLI_GOOGLE_ANDROID_CLIENT_ID"
 fi
 
 usage() {
@@ -44,11 +46,14 @@ Options:
   -h, --help        Show this help
 
 Environment:
-  Reads $ENV_FILE when present (EXPO_PUBLIC_* vars).
+  Reads $ENV_FILE when present (EXPO_PUBLIC_API_URL, EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID).
+  The Android OAuth client ID is baked into the APK via apps/mobile/.env during the Docker build.
+  EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is for the web UI only — not injected into APK builds.
 
 Examples:
   $(basename "$0")
   $(basename "$0") --api-url http://192.168.1.10:8000
+  EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=your-android-id.apps.googleusercontent.com $(basename "$0")
   BUILD_TYPE=debug $(basename "$0") --debug
 EOF
 }
@@ -72,14 +77,26 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 mkdir -p "$OUTPUT" "$MOBILE/.gradle-home"
+# Docker COPY requires the directory to exist (CI restores cache here; local builds persist it).
+touch "$MOBILE/.gradle-home/.keep" 2>/dev/null || true
+
+if [ -d "$MOBILE/.gradle-home" ] && [ "$(find "$MOBILE/.gradle-home" -mindepth 1 2>/dev/null | wc -l)" -gt 1 ]; then
+  echo "==> Gradle cache: $(du -sh "$MOBILE/.gradle-home" | cut -f1)"
+else
+  echo "==> Gradle cache: empty (first build will be slow)"
+fi
 
 echo "==> Building APK (type=$BUILD_TYPE, api=$API_URL)"
+if [[ -n "$GOOGLE_ANDROID_CLIENT_ID" ]]; then
+  echo "==> Google Android client: $GOOGLE_ANDROID_CLIENT_ID"
+else
+  echo "Warning: EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID is empty — set it in docker/.env or on the command line" >&2
+fi
 echo "==> Output: $OUTPUT"
 
 BUILD_ARGS=(
   -f "$MOBILE/Dockerfile.apk"
   --build-arg "EXPO_PUBLIC_API_URL=$API_URL"
-  --build-arg "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=$GOOGLE_WEB_CLIENT_ID"
   --build-arg "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=$GOOGLE_ANDROID_CLIENT_ID"
   --build-arg "BUILD_TYPE=$BUILD_TYPE"
   -t "$IMAGE"
@@ -87,6 +104,8 @@ BUILD_ARGS=(
 if [[ "$NO_CACHE" -eq 1 ]]; then
   BUILD_ARGS=(--no-cache "${BUILD_ARGS[@]}")
 fi
+
+export DOCKER_BUILDKIT=1
 
 docker build "${BUILD_ARGS[@]}" "$MOBILE"
 

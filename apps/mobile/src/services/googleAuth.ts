@@ -6,23 +6,27 @@ import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-si
 
 WebBrowser.maybeCompleteAuthSession();
 
-const WEB_CLIENT_ID =
-  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ??
-  "760898317345-flj067csob9df2orbf6jssr3eqs5pta7.apps.googleusercontent.com";
+const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";
+const ANDROID_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ??
+  "760898317345-2srki8o0tj5ljd4eouglc8fdf58qvnmi.apps.googleusercontent.com";
 
-/** Browser OAuth redirect baked into release APKs (add to Web client redirect URIs in Google Cloud). */
+/** Android OAuth redirect — register on the Android client in Google Cloud Console. */
 export const GOOGLE_REDIRECT_URI = AuthSession.makeRedirectUri({
   scheme: "breakingbank",
   path: "oauthredirect",
   native: "com.breakingbank.app:/oauthredirect",
 });
 
-export type GooglePrompt = ReturnType<typeof useGoogleWebAuth>[2];
+export type GooglePrompt = ReturnType<typeof useGoogleAuth>[2];
 
 let configured = false;
 
 function ensureNativeConfigured() {
   if (configured || Platform.OS === "web") return;
+  if (!WEB_CLIENT_ID) {
+    throw new Error("EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is required for iOS Google Sign-In");
+  }
   GoogleSignin.configure({
     webClientId: WEB_CLIENT_ID,
     offlineAccess: false,
@@ -65,12 +69,21 @@ export async function signInWithGoogleNative(): Promise<string> {
   }
 }
 
-/** Browser-based Google OAuth (Web client ID). Works on Android without native SHA-1 setup. */
-export function useGoogleWebAuth() {
-  return Google.useAuthRequest(
-    {
+/** Platform-specific Google OAuth (Web client on web, Android client on Android). */
+export function useGoogleAuth() {
+  if (Platform.OS === "web") {
+    return Google.useAuthRequest({
       clientId: WEB_CLIENT_ID,
       webClientId: WEB_CLIENT_ID,
+      responseType: AuthSession.ResponseType.IdToken,
+      scopes: ["openid", "profile", "email"],
+    });
+  }
+
+  return Google.useAuthRequest(
+    {
+      androidClientId: ANDROID_CLIENT_ID,
+      clientId: ANDROID_CLIENT_ID,
       redirectUri: GOOGLE_REDIRECT_URI,
       responseType: AuthSession.ResponseType.IdToken,
       scopes: ["openid", "profile", "email"],
@@ -79,7 +92,7 @@ export function useGoogleWebAuth() {
   );
 }
 
-export async function signInWithGoogleWeb(promptAsync: GooglePrompt): Promise<string> {
+export async function signInWithGoogleOAuth(promptAsync: GooglePrompt): Promise<string> {
   const result = await promptAsync();
   if (result.type === "cancel" || result.type === "dismiss") {
     throw new Error("CANCELLED");
@@ -92,11 +105,19 @@ export async function signInWithGoogleWeb(promptAsync: GooglePrompt): Promise<st
   return idToken;
 }
 
-export async function signInWithGoogle(webPrompt?: GooglePrompt): Promise<string> {
-  // Android sideload builds use the debug keystore; browser OAuth avoids SHA-1 mismatch (DEVELOPER_ERROR).
+export async function signInWithGoogle(prompt?: GooglePrompt): Promise<string> {
   if (Platform.OS === "web" || Platform.OS === "android") {
-    if (!webPrompt) throw new Error("Google auth not ready");
-    return signInWithGoogleWeb(webPrompt);
+    if (!prompt) throw new Error("Google auth not ready");
+    if (Platform.OS === "android" && !ANDROID_CLIENT_ID) {
+      throw new Error("EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID is not configured");
+    }
+    if (Platform.OS === "web" && !WEB_CLIENT_ID) {
+      throw new Error("EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is not configured");
+    }
+    return signInWithGoogleOAuth(prompt);
   }
   return signInWithGoogleNative();
 }
+
+// Back-compat alias for login screen
+export const useGoogleWebAuth = useGoogleAuth;

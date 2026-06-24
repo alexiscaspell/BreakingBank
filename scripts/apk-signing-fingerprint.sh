@@ -31,6 +31,6 @@ cat <<'EOF'
 Add the SHA-1 to Google Cloud Console:
   APIs & Services → Credentials → Android OAuth client (com.breakingbank.app)
 
-For browser-based sign-in on Android, also add this redirect URI to the Web OAuth client:
+For browser-based sign-in on Android, add this redirect URI to the Android OAuth client:
   com.breakingbank.app:/oauthredirect
 EOF

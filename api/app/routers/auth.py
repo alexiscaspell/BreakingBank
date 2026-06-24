@@ -55,7 +55,8 @@ async def google_auth(body: GoogleAuthRequest, db: AsyncSession = Depends(get_db
     if resp.status_code != 200:
         raise HTTPException(status_code=401, detail="Invalid Google token")
     data = resp.json()
-    if data.get("aud") != settings.google_client_id:
+    allowed_audiences = {settings.google_client_id, settings.google_android_client_id} - {""}
+    if data.get("aud") not in allowed_audiences:
         raise HTTPException(status_code=401, detail="Invalid Google audience")
     email = data["email"]
     user = await get_user_by_email(db, email)

@@ -90,7 +90,10 @@ if [[ "$API_URL" == *"localhost"* || "$API_URL" == *"127.0.0.1"* || "$API_URL" =
 fi
 
 if [[ "$SKIP_BUILD" -eq 0 ]]; then
-  OUTPUT="$OUTPUT" BUILD_TYPE="$BUILD_TYPE" "$SCRIPT_DIR/build-apk-docker.sh" --api-url "$API_URL" "${INSTALL_ARGS[@]}"
+  OUTPUT="$OUTPUT" BUILD_TYPE="$BUILD_TYPE" \
+    EXPO_PUBLIC_API_URL="$API_URL" \
+    EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID:-}" \
+    "$SCRIPT_DIR/build-apk-docker.sh" --api-url "$API_URL" "${INSTALL_ARGS[@]}"
 fi
 
 if [[ "$BUILD_TYPE" == "release" ]]; then
