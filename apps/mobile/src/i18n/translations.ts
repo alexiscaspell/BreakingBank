@@ -8,6 +8,8 @@ export const es = {
   "nav.accounts": "Cuentas",
   "nav.charts": "Gráficos",
   "nav.more": "Más",
+  "nav.collapseMenu": "Contraer menú",
+  "nav.expandMenu": "Expandir menú",
 
   "common.expenses": "Gastos",
   "common.income": "Ingresos",
@@ -182,6 +184,8 @@ export const en = {
   "nav.accounts": "Accounts",
   "nav.charts": "Charts",
   "nav.more": "More",
+  "nav.collapseMenu": "Collapse menu",
+  "nav.expandMenu": "Expand menu",
 
   "common.expenses": "Expenses",
   "common.income": "Income",

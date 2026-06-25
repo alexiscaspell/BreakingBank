@@ -7,16 +7,18 @@ import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-si
 WebBrowser.maybeCompleteAuthSession();
 
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";
+// Baked into APK builds; matched in Google Cloud via package com.breakingbank.app + APK SHA-1.
 const ANDROID_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ??
   "760898317345-2srki8o0tj5ljd4eouglc8fdf58qvnmi.apps.googleusercontent.com";
 
-/** Android OAuth redirect — register on the Android client in Google Cloud Console. */
-export const GOOGLE_REDIRECT_URI = AuthSession.makeRedirectUri({
-  scheme: "breakingbank",
-  path: "oauthredirect",
-  native: "com.breakingbank.app:/oauthredirect",
-});
+/**
+ * Native Google Sign-In returns an id_token whose `aud` is always the Web client ID.
+ * The Android OAuth client is validated via package name + signing certificate SHA-1 in Console.
+ * @see https://developers.google.com/identity/sign-in/android/backend-auth
+ */
+const NATIVE_ID_TOKEN_CLIENT_ID =
+  WEB_CLIENT_ID || "760898317345-flj067csob9df2orbf6jssr3eqs5pta7.apps.googleusercontent.com";
 
 export type GooglePrompt = ReturnType<typeof useGoogleAuth>[2];
 
@@ -24,11 +26,8 @@ let configured = false;
 
 function ensureNativeConfigured() {
   if (configured || Platform.OS === "web") return;
-  if (!WEB_CLIENT_ID) {
-    throw new Error("EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is required for iOS Google Sign-In");
-  }
   GoogleSignin.configure({
-    webClientId: WEB_CLIENT_ID,
+    webClientId: NATIVE_ID_TOKEN_CLIENT_ID,
     offlineAccess: false,
   });
   configured = true;
@@ -45,6 +44,9 @@ function mapGoogleError(err: unknown): never {
 }
 
 export async function signInWithGoogleNative(): Promise<string> {
+  if (Platform.OS === "android" && !ANDROID_CLIENT_ID) {
+    throw new Error("EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID is not configured");
+  }
   ensureNativeConfigured();
   if (Platform.OS === "android") {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -69,27 +71,14 @@ export async function signInWithGoogleNative(): Promise<string> {
   }
 }
 
-/** Platform-specific Google OAuth (Web client on web, Android client on Android). */
+/** Web-only Google OAuth. Android uses native Google Sign-In (browser OAuth rejects Android client IDs). */
 export function useGoogleAuth() {
-  if (Platform.OS === "web") {
-    return Google.useAuthRequest({
-      clientId: WEB_CLIENT_ID,
-      webClientId: WEB_CLIENT_ID,
-      responseType: AuthSession.ResponseType.IdToken,
-      scopes: ["openid", "profile", "email"],
-    });
-  }
-
-  return Google.useAuthRequest(
-    {
-      androidClientId: ANDROID_CLIENT_ID,
-      clientId: ANDROID_CLIENT_ID,
-      redirectUri: GOOGLE_REDIRECT_URI,
-      responseType: AuthSession.ResponseType.IdToken,
-      scopes: ["openid", "profile", "email"],
-    },
-    { scheme: "breakingbank", path: "oauthredirect" }
-  );
+  return Google.useAuthRequest({
+    clientId: WEB_CLIENT_ID,
+    webClientId: WEB_CLIENT_ID,
+    responseType: AuthSession.ResponseType.IdToken,
+    scopes: ["openid", "profile", "email"],
+  });
 }
 
 export async function signInWithGoogleOAuth(promptAsync: GooglePrompt): Promise<string> {
@@ -106,12 +95,9 @@ export async function signInWithGoogleOAuth(promptAsync: GooglePrompt): Promise<
 }
 
 export async function signInWithGoogle(prompt?: GooglePrompt): Promise<string> {
-  if (Platform.OS === "web" || Platform.OS === "android") {
+  if (Platform.OS === "web") {
     if (!prompt) throw new Error("Google auth not ready");
-    if (Platform.OS === "android" && !ANDROID_CLIENT_ID) {
-      throw new Error("EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID is not configured");
-    }
-    if (Platform.OS === "web" && !WEB_CLIENT_ID) {
+    if (!WEB_CLIENT_ID) {
       throw new Error("EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is not configured");
     }
     return signInWithGoogleOAuth(prompt);
@@ -119,5 +105,4 @@ export async function signInWithGoogle(prompt?: GooglePrompt): Promise<string> {
   return signInWithGoogleNative();
 }
 
-// Back-compat alias for login screen
 export const useGoogleWebAuth = useGoogleAuth;

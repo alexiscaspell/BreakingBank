@@ -131,7 +131,7 @@ export default function LoginScreen() {
         label={loading ? "..." : t("login.google")}
         variant="outlined"
         onPress={googleSignIn}
-        disabled={loading || !webGooglePrompt}
+        disabled={loading || (Platform.OS === "web" && !webGooglePrompt)}
         fullWidth
       />
 

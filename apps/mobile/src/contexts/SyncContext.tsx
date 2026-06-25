@@ -18,6 +18,7 @@ import {
 import { isNativeOffline } from "../sync/types";
 import { getFormatLocaleTag } from "../utils/format";
 import { t } from "../i18n";
+import { useAuth } from "./AuthContext";
 
 type SyncContextType = {
   lastSync: Date | null;
@@ -32,24 +33,26 @@ type SyncContextType = {
 const SyncContext = createContext<SyncContextType | null>(null);
 
 export function SyncProvider({ children }: { children: ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [conflictCount, setConflictCount] = useState(0);
 
   const refreshStats = useCallback(async () => {
-    if (!isNativeOffline()) return;
+    if (!isNativeOffline() || !user) return;
     setPendingCount(await getPendingMutationCount());
     setConflictCount(await getConflictCount());
-  }, []);
+  }, [user]);
 
   const refreshSyncTime = useCallback(async () => {
+    if (!user) return;
     setLastSync(await getLastSyncDate());
     await refreshStats();
-  }, [refreshStats]);
+  }, [refreshStats, user]);
 
   const triggerSync = useCallback(async () => {
-    if (!isNativeOffline()) return;
+    if (!isNativeOffline() || !user) return;
     setSyncing(true);
     try {
       const d = await syncNow();
@@ -58,29 +61,30 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     } finally {
       setSyncing(false);
     }
-  }, [refreshStats]);
+  }, [refreshStats, user]);
 
   useEffect(() => {
+    if (authLoading || !user) return;
     refreshSyncTime();
-  }, [refreshSyncTime]);
+  }, [authLoading, refreshSyncTime, user]);
 
   useEffect(() => {
-    if (!isNativeOffline()) return;
+    if (!isNativeOffline() || !user) return;
     const onChange = (state: AppStateStatus) => {
       if (state === "active") triggerSync().catch(console.warn);
     };
     const sub = AppState.addEventListener("change", onChange);
     return () => sub.remove();
-  }, [triggerSync]);
+  }, [triggerSync, user]);
 
   useEffect(() => {
-    if (!isNativeOffline() || Platform.OS === "web") return;
+    if (!isNativeOffline() || Platform.OS === "web" || !user) return;
     return NetInfo.addEventListener((state) => {
       if (state.isConnected && state.isInternetReachable !== false) {
         triggerSync().catch(console.warn);
       }
     });
-  }, [triggerSync]);
+  }, [triggerSync, user]);
 
   return (
     <SyncContext.Provider

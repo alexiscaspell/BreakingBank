@@ -1,6 +1,6 @@
 import { api } from "../api/client";
 import { getLocalDb, clearLocalData } from "../db";
-import { syncNow } from "../sync";
+import { resetAndSync, syncNow } from "../sync";
 import { enqueueMutation } from "../sync/queue";
 import { generateClientId, isNativeOffline } from "../sync/types";
 
@@ -1045,8 +1045,7 @@ export async function getAnalyticsSummary(filters: {
 
 export async function onUserLogin(): Promise<void> {
   if (!isNativeOffline()) return;
-  await clearLocalData();
-  await syncNow();
+  await resetAndSync(clearLocalData);
 }
 
 export async function refreshFromServer(): Promise<Date | null> {

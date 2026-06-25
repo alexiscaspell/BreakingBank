@@ -5,7 +5,16 @@ import { clearProcessedMutations, getPendingMutations } from "./queue";
 import type { SyncPullPayload, SyncPushResult } from "./types";
 import { uploadPendingFiles } from "./uploads";
 
-let syncing = false;
+let syncMutex: Promise<unknown> = Promise.resolve();
+
+export function withSyncMutex<T>(fn: () => Promise<T>): Promise<T> {
+  const run = syncMutex.then(fn, fn);
+  syncMutex = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
+}
 
 const ENTITY_TABLE: Record<string, string> = {
   account: "accounts",
@@ -17,9 +26,7 @@ const ENTITY_TABLE: Record<string, string> = {
   reminder: "reminders",
 };
 
-export async function syncNow(): Promise<Date | null> {
-  if (syncing) return getLastSyncDate();
-  syncing = true;
+async function performSync(): Promise<Date | null> {
   try {
     const pending = await getPendingMutations();
     if (pending.length > 0) {
@@ -42,9 +49,19 @@ export async function syncNow(): Promise<Date | null> {
   } catch (e) {
     console.warn("Sync failed", e);
     return getLastSyncDate();
-  } finally {
-    syncing = false;
   }
+}
+
+export async function syncNow(): Promise<Date | null> {
+  return withSyncMutex(performSync);
+}
+
+/** Clears local store and pulls server data; serialized with background sync. */
+export async function resetAndSync(clear: () => Promise<void>): Promise<Date | null> {
+  return withSyncMutex(async () => {
+    await clear();
+    return performSync();
+  });
 }
 
 async function applyIdMappings(
@@ -76,6 +93,5 @@ export async function getLastSyncDate(): Promise<Date | null> {
   return v ? new Date(v) : null;
 }
 
-export { syncing as isSyncing };
 export { getConflictCount, listConflicts, clearConflicts } from "./conflicts";
 export { getPendingMutationCount } from "./queue";

@@ -1,6 +1,7 @@
 import * as SQLite from "expo-sqlite";
 
 let db: SQLite.SQLiteDatabase | null = null;
+let opening: Promise<SQLite.SQLiteDatabase> | null = null;
 
 export const SCHEMA_VERSION = 3;
 
@@ -209,13 +210,24 @@ async function migrateV3(database: SQLite.SQLiteDatabase): Promise<void> {
 }
 
 export async function getLocalDb(): Promise<SQLite.SQLiteDatabase> {
-  if (!db) {
-    db = await SQLite.openDatabaseAsync("spend_tracker_local.db");
-    await db.execAsync("PRAGMA journal_mode = WAL;");
-    await db.execAsync("PRAGMA foreign_keys = ON;");
-    await runMigrations(db);
+  if (db) return db;
+  if (!opening) {
+    opening = (async () => {
+      const database = await SQLite.openDatabaseAsync("spend_tracker_local.db");
+      await database.execAsync("PRAGMA journal_mode = WAL;");
+      await database.execAsync("PRAGMA foreign_keys = ON;");
+      await runMigrations(database);
+      db = database;
+      return database;
+    })();
   }
-  return db;
+  try {
+    return await opening;
+  } catch (e) {
+    opening = null;
+    db = null;
+    throw e;
+  }
 }
 
 export async function getMeta(key: string): Promise<string | null> {
