@@ -5,6 +5,7 @@ import { useAuth } from "../src/contexts/AuthContext";
 import { useLocale } from "../src/contexts/LocaleContext";
 import { useTheme } from "../src/contexts/ThemeContext";
 import { Button } from "../src/components/material/Button";
+import { DownloadApkButton } from "../src/components/DownloadApkButton";
 import { signInWithGoogle, useGoogleWebAuth } from "../src/services/googleAuth";
 
 function formatError(err: unknown): string {
@@ -138,6 +139,8 @@ export default function LoginScreen() {
       <Pressable onPress={() => setIsRegister(!isRegister)} style={{ marginTop: 16 }}>
         <Text style={styles.link}>{isRegister ? t("login.hasAccount") : t("login.createAccount")}</Text>
       </Pressable>
+
+      <DownloadApkButton style={{ marginTop: 24 }} />
     </View>
   );
 }

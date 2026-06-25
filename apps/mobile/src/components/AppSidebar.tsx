@@ -8,6 +8,7 @@ import { useGroup } from "../contexts/GroupContext";
 import { useLocale } from "../contexts/LocaleContext";
 import { useSidebar } from "../contexts/SidebarContext";
 import { useTheme } from "../contexts/ThemeContext";
+import { DownloadApkButton } from "./DownloadApkButton";
 import { shape } from "../theme/shape";
 
 type NavItem = {
@@ -136,6 +137,7 @@ export function AppSidebar({ autoCollapseOnNavigate = false }: Props) {
         })}
       </ScrollView>
       <View style={styles.footer}>
+        <DownloadApkButton compact style={{ marginBottom: 8, alignSelf: "stretch" }} />
         {user ? <Text style={styles.user}>{user.username}</Text> : null}
         <Pressable
           style={styles.logout}

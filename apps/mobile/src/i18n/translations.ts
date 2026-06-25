@@ -52,6 +52,7 @@ export const es = {
   "login.createAccount": "Crear cuenta",
   "login.google": "Continuar con Google",
   "login.or": "o",
+  "downloadApk.label": "Descargar app Android (APK)",
 
   "settings.title": "Ajustes",
   "settings.appearance": "Apariencia",
@@ -228,6 +229,7 @@ export const en = {
   "login.createAccount": "Create account",
   "login.google": "Continue with Google",
   "login.or": "or",
+  "downloadApk.label": "Download Android app (APK)",
 
   "settings.title": "Settings",
   "settings.appearance": "Appearance",
