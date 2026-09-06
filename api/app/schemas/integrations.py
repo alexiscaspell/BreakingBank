@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date as DateType, datetime
 
 from pydantic import BaseModel, Field
 
@@ -93,7 +93,7 @@ class PendingImportResponse(BaseModel):
     external_id: str
     amount: float | None = None
     currency: str = "ARS"
-    occurred_on: date | None = None
+    occurred_on: DateType | None = None
     direction: str = "out"
     counterparty_cbu: str | None = None
     counterparty_cvu: str | None = None
@@ -121,7 +121,9 @@ class PendingImportAccept(BaseModel):
     amount: float | None = None
     type: str | None = None
     comment: str | None = None
-    date: date | None = None
+    # Field name `date` shadows datetime.date in Py3.12 class scopes when given a
+    # default of None (`date: date | None = None` → TypeError at import).
+    date: DateType | None = None
     learn_rule: bool = False
     learn_match_type: str | None = None  # alias | cbu | cvu | cuit | contains
     learn_match_value: str | None = None
