@@ -178,7 +178,6 @@ BreakingBank/
 ├── scripts/                # docker-up, build-apk, CI helpers
 ├── .github/workflows/      # API, UI, APK pipelines
 ├── logo.png                # Brand mark (also in mobile assets)
-└── reference/              # UI reference screenshots
 ```
 
 ---
@@ -207,14 +206,6 @@ Full interactive docs at `/docs` when the API is running.
 | **Cuentas** | Account balances |
 | **Gráficos** | Category charts |
 | **Más** | Export, categories, recurring, reminders, groups, settings |
-
----
-
-## Reference UI
-
-Target UX inspiration lives in [`reference/`](reference/) (screenshots from the original app format).
-
-Sample import/export spreadsheet: `2026_06_23_20_18_04_305060.xlsx` at repo root.
 
 ---
 

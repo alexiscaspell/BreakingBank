@@ -42,7 +42,8 @@
           "iosUrlScheme": "com.googleusercontent.apps.760898317345-flj067csob9df2orbf6jssr3eqs5pta7"
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "./plugins/withBankNotificationListener.js"
     ],
     "scheme": "breakingbank",
     "experiments": {

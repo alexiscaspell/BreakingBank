@@ -45,6 +45,9 @@ async def create_new_group(
     db: AsyncSession = Depends(get_db),
 ):
     group = await create_group(db, name=body.name, owner=user)
+    from app.services.seed import seed_group_data
+
+    await seed_group_data(db, group.id, user.id)
     user.active_group_id = group.id
     await db.commit()
     return _to_group_response(group, "owner", 1)

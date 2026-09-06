@@ -22,6 +22,7 @@ export default function MoreScreen() {
   const menu = useMemo(
     () => [
       { href: "/(tabs)/export-import", title: t("more.exportImport"), subtitle: t("more.exportImportSub"), icon: "file-export" as const },
+      { href: "/(tabs)/integrations", title: t("more.integrations"), subtitle: t("more.integrationsSub"), icon: "bank-transfer" as const },
       { href: "/(tabs)/categories", title: t("more.categories"), subtitle: t("more.categoriesSub"), icon: "shape" as const },
       { href: "/(tabs)/recurring", title: t("more.recurring"), subtitle: t("more.recurringSub"), icon: "cash-sync" as const },
       { href: "/(tabs)/reminders", title: t("more.reminders"), subtitle: t("more.remindersSub"), icon: "bell" as const },

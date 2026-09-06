@@ -64,6 +64,8 @@ def serialize(txn: Transaction) -> TransactionResponse:
         amount=float(txn.amount),
         date=txn.date,
         comment=txn.comment,
+        source=getattr(txn, "source", None) or "manual",
+        external_id=getattr(txn, "external_id", None),
         label_ids=[tl.label_id for tl in txn.transaction_labels],
         labels=labels,
         attachments=[AttachmentResponse(
@@ -131,6 +133,8 @@ async def create_transaction(body: TransactionCreate, group: Group = Depends(get
         amount=body.amount,
         date=body.date,
         comment=body.comment,
+        source=body.source or "manual",
+        external_id=body.external_id,
     )
     db.add(txn)
     await db.flush()

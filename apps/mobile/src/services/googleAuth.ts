@@ -6,10 +6,12 @@ import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-si
 
 WebBrowser.maybeCompleteAuthSession();
 
-const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";
+const WEB_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+  "760898317345-flj067csob9df2orbf6jssr3eqs5pta7.apps.googleusercontent.com";
 // Baked into APK builds; matched in Google Cloud via package com.breakingbank.app + APK SHA-1.
 const ANDROID_CLIENT_ID =
-  process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ??
+  process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
   "760898317345-2srki8o0tj5ljd4eouglc8fdf58qvnmi.apps.googleusercontent.com";
 
 /**
@@ -17,8 +19,7 @@ const ANDROID_CLIENT_ID =
  * The Android OAuth client is validated via package name + signing certificate SHA-1 in Console.
  * @see https://developers.google.com/identity/sign-in/android/backend-auth
  */
-const NATIVE_ID_TOKEN_CLIENT_ID =
-  WEB_CLIENT_ID || "760898317345-flj067csob9df2orbf6jssr3eqs5pta7.apps.googleusercontent.com";
+const NATIVE_ID_TOKEN_CLIENT_ID = WEB_CLIENT_ID;
 
 export type GooglePrompt = ReturnType<typeof useGoogleAuth>[2];
 

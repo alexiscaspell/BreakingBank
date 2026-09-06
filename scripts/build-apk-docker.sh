@@ -11,9 +11,12 @@ API_URL="${EXPO_PUBLIC_API_URL:-http://10.0.2.2:8000}"
 BUILD_TYPE="${BUILD_TYPE:-release}"
 IMAGE="${IMAGE:-breakingbank-apk-builder}"
 GOOGLE_ANDROID_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID:-}"
+GOOGLE_WEB_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID:-}"
 CLI_API_URL="${EXPO_PUBLIC_API_URL:-}"
 CLI_GOOGLE_ANDROID_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID:-}"
+CLI_GOOGLE_WEB_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID:-}"
 NO_CACHE=0
+MOBILE_ENV_EXAMPLE="$MOBILE/.env.example"
 
 if [[ -f "$ENV_FILE" ]]; then
   set -a
@@ -22,12 +25,27 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
   API_URL="${EXPO_PUBLIC_API_URL:-$API_URL}"
   GOOGLE_ANDROID_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID:-$GOOGLE_ANDROID_CLIENT_ID}"
+  GOOGLE_WEB_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID:-$GOOGLE_WEB_CLIENT_ID}"
+fi
+# Fallback to apps/mobile/.env.example when docker/.env is missing placeholders.
+if [[ -f "$MOBILE_ENV_EXAMPLE" ]]; then
+  # shellcheck disable=SC1090
+  source <(grep -E '^EXPO_PUBLIC_GOOGLE_(ANDROID|WEB)_CLIENT_ID=' "$MOBILE_ENV_EXAMPLE" || true)
+  if [[ -z "$GOOGLE_ANDROID_CLIENT_ID" || "$GOOGLE_ANDROID_CLIENT_ID" == your-* ]]; then
+    GOOGLE_ANDROID_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID:-$GOOGLE_ANDROID_CLIENT_ID}"
+  fi
+  if [[ -z "$GOOGLE_WEB_CLIENT_ID" || "$GOOGLE_WEB_CLIENT_ID" == your-* ]]; then
+    GOOGLE_WEB_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID:-$GOOGLE_WEB_CLIENT_ID}"
+  fi
 fi
 if [[ -n "$CLI_API_URL" ]]; then
   API_URL="$CLI_API_URL"
 fi
 if [[ -n "$CLI_GOOGLE_ANDROID_CLIENT_ID" ]]; then
   GOOGLE_ANDROID_CLIENT_ID="$CLI_GOOGLE_ANDROID_CLIENT_ID"
+fi
+if [[ -n "$CLI_GOOGLE_WEB_CLIENT_ID" ]]; then
+  GOOGLE_WEB_CLIENT_ID="$CLI_GOOGLE_WEB_CLIENT_ID"
 fi
 
 usage() {
@@ -87,10 +105,13 @@ else
 fi
 
 echo "==> Building APK (type=$BUILD_TYPE, api=$API_URL)"
-if [[ -n "$GOOGLE_ANDROID_CLIENT_ID" ]]; then
+if [[ -n "$GOOGLE_ANDROID_CLIENT_ID" && "$GOOGLE_ANDROID_CLIENT_ID" != your-* ]]; then
   echo "==> Google Android client: $GOOGLE_ANDROID_CLIENT_ID"
 else
   echo "Warning: EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID is empty — set it in docker/.env or on the command line" >&2
+fi
+if [[ -n "$GOOGLE_WEB_CLIENT_ID" && "$GOOGLE_WEB_CLIENT_ID" != your-* ]]; then
+  echo "==> Google Web client: $GOOGLE_WEB_CLIENT_ID"
 fi
 echo "==> Output: $OUTPUT"
 
@@ -98,6 +119,7 @@ BUILD_ARGS=(
   -f "$MOBILE/Dockerfile.apk"
   --build-arg "EXPO_PUBLIC_API_URL=$API_URL"
   --build-arg "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=$GOOGLE_ANDROID_CLIENT_ID"
+  --build-arg "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=$GOOGLE_WEB_CLIENT_ID"
   --build-arg "BUILD_TYPE=$BUILD_TYPE"
   -t "$IMAGE"
 )

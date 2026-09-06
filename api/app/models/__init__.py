@@ -2,6 +2,7 @@ from app.models.account import Account
 from app.models.attachment import Attachment
 from app.models.category import Category
 from app.models.group import Group, GroupMember
+from app.models.integration import CounterpartyRule, IntegrationSource, PendingImport
 from app.models.label import Label, TransactionLabel
 from app.models.recurring_payment import RecurringPayment
 from app.models.reminder import Reminder
@@ -22,4 +23,7 @@ __all__ = [
     "Transfer",
     "RecurringPayment",
     "Reminder",
+    "IntegrationSource",
+    "CounterpartyRule",
+    "PendingImport",
 ]

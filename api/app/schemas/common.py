@@ -18,6 +18,10 @@ class AccountBase(BaseModel):
     icon_key: str = "wallet"
     color: str = "#4ecdc4"
     initial_balance: float = 0
+    cbu: str | None = None
+    cvu: str | None = None
+    alias: str | None = None
+    provider_key: str | None = None
 
 
 class AccountCreate(AccountBase):
@@ -29,6 +33,10 @@ class AccountUpdate(BaseModel):
     icon_key: str | None = None
     color: str | None = None
     initial_balance: float | None = None
+    cbu: str | None = None
+    cvu: str | None = None
+    alias: str | None = None
+    provider_key: str | None = None
 
 
 class AccountResponse(AccountBase, TimestampMixin):
@@ -85,6 +93,8 @@ class TransactionBase(BaseModel):
     date: DateType
     comment: str | None = None
     label_ids: list[str] = Field(default_factory=list)
+    source: str = "manual"
+    external_id: str | None = None
 
 
 class TransactionCreate(TransactionBase):
@@ -99,6 +109,8 @@ class TransactionUpdate(BaseModel):
     date: DateType | None = None
     comment: str | None = None
     label_ids: list[str] | None = None
+    source: str | None = None
+    external_id: str | None = None
 
 
 class AttachmentResponse(BaseModel):

@@ -46,6 +46,10 @@ async def _account_response(db: AsyncSession, acc: Account) -> AccountResponse:
         icon_key=acc.icon_key,
         color=acc.color,
         initial_balance=float(acc.initial_balance or 0),
+        cbu=acc.cbu,
+        cvu=acc.cvu,
+        alias=acc.alias,
+        provider_key=acc.provider_key,
         balance=await account_balance(db, acc),
         created_at=acc.created_at,
         updated_at=acc.updated_at,
@@ -96,6 +100,8 @@ def _serialize_transaction(txn: Transaction) -> TransactionResponse:
         amount=float(txn.amount),
         date=txn.date,
         comment=txn.comment,
+        source=getattr(txn, "source", None) or "manual",
+        external_id=getattr(txn, "external_id", None),
         label_ids=[tl.label_id for tl in txn.transaction_labels],
         labels=labels,
         attachments=[
@@ -196,6 +202,10 @@ async def _upsert_account(db: AsyncSession, group_id: str, user_id: str, data: A
         acc.icon_key = data.icon_key
         acc.color = data.color
         acc.initial_balance = data.initial_balance
+        acc.cbu = data.cbu
+        acc.cvu = data.cvu
+        acc.alias = data.alias
+        acc.provider_key = data.provider_key
         acc.updated_at = _utcnow()
         acc.deleted_at = None
     else:
@@ -208,6 +218,10 @@ async def _upsert_account(db: AsyncSession, group_id: str, user_id: str, data: A
             icon_key=data.icon_key,
             color=data.color,
             initial_balance=data.initial_balance,
+            cbu=data.cbu,
+            cvu=data.cvu,
+            alias=data.alias,
+            provider_key=data.provider_key,
         )
         db.add(acc)
     await db.flush()
@@ -266,6 +280,8 @@ async def _upsert_transaction(db: AsyncSession, group_id: str, user_id: str, dat
         txn.amount = data.amount
         txn.date = data.date
         txn.comment = data.comment
+        txn.source = data.source or "manual"
+        txn.external_id = data.external_id
         txn.updated_at = _utcnow()
         txn.deleted_at = None
     else:
@@ -280,6 +296,8 @@ async def _upsert_transaction(db: AsyncSession, group_id: str, user_id: str, dat
             amount=data.amount,
             date=data.date,
             comment=data.comment,
+            source=data.source or "manual",
+            external_id=data.external_id,
         )
         db.add(txn)
         await db.flush()

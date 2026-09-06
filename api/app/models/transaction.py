@@ -9,7 +9,10 @@ from app.database import Base
 
 class Transaction(Base):
     __tablename__ = "transactions"
-    __table_args__ = (UniqueConstraint("group_id", "client_id", name="uq_transaction_group_client"),)
+    __table_args__ = (
+        UniqueConstraint("group_id", "client_id", name="uq_transaction_group_client"),
+        UniqueConstraint("group_id", "source", "external_id", name="uq_transaction_group_source_ext"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     client_id: Mapped[str] = mapped_column(String(36), index=True, default=lambda: str(uuid.uuid4()))
@@ -21,6 +24,9 @@ class Transaction(Base):
     amount: Mapped[float] = mapped_column(Numeric(18, 2))
     date: Mapped[date] = mapped_column(Date)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source: Mapped[str] = mapped_column(String(40), default="manual")
+    # manual | import | mercadopago | santander | banco_provincia
+    external_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

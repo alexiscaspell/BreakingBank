@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import init_db
-from app.routers import accounts, analytics, auth, categories, export_import, files, groups, labels, recurring, reminders, sync, transactions, transfers
+from app.routers import accounts, analytics, auth, categories, export_import, files, groups, integrations, labels, recurring, reminders, sync, transactions, transfers
 from app.services.storage import storage_service
 
 
@@ -43,6 +43,7 @@ app.include_router(analytics.router)
 app.include_router(files.router)
 app.include_router(export_import.router)
 app.include_router(sync.router)
+app.include_router(integrations.router)
 
 
 @app.get("/health")

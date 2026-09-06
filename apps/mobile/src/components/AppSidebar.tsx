@@ -41,6 +41,7 @@ export function AppSidebar({ autoCollapseOnNavigate = false }: Props) {
       { href: "/(tabs)/reminders", label: t("more.reminders"), icon: "bell" },
       { href: "/(tabs)/groups", label: t("more.groups"), icon: "account-group" },
       { href: "/(tabs)/export-import", label: t("more.exportImport"), icon: "file-export" },
+      { href: "/(tabs)/integrations", label: t("more.integrations"), icon: "bank-transfer" },
       { href: "/(tabs)/settings", label: t("more.settings"), icon: "cog" },
     ],
     [t]

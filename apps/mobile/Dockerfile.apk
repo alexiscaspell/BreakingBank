@@ -10,6 +10,7 @@ FROM node:24-bookworm
 
 ARG EXPO_PUBLIC_API_URL=http://10.0.2.2:8000
 ARG EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=
+ARG EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=
 ARG BUILD_TYPE=release
 ENV CI=1
 ENV EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK=1
@@ -43,15 +44,16 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY app.json babel.config.js tsconfig.json index.ts App.tsx network_security_config.xml ./
 COPY assets ./assets
 COPY app ./app
+COPY plugins ./plugins
 
 RUN npx expo prebuild --platform android --no-install
 
 RUN printf 'sdk.dir=%s\n' "${ANDROID_HOME}" > android/local.properties
 
-RUN printf '\norg.gradle.parallel=true\norg.gradle.caching=true\norg.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=512m\n' >> android/gradle.properties
+RUN printf '\norg.gradle.parallel=true\norg.gradle.caching=true\norg.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=512m\nreactNativeArchitectures=armeabi-v7a,arm64-v8a\n' >> android/gradle.properties
 
 # Release builds embed the JS bundle; sign with debug keystore for sideloading.
-RUN printf '\nandroid {\n    buildTypes {\n        release {\n            signingConfig signingConfigs.debug\n        }\n    }\n}\n' >> android/app/build.gradle
+RUN printf '\nandroid {\n    defaultConfig {\n        ndk {\n            abiFilters "armeabi-v7a", "arm64-v8a"\n        }\n    }\n    buildTypes {\n        release {\n            signingConfig signingConfigs.debug\n        }\n    }\n}\n' >> android/app/build.gradle
 
 # Allow HTTP to local/dev API (release manifest does not inherit debug cleartext flags).
 RUN mkdir -p android/app/src/main/res/xml \
@@ -64,12 +66,14 @@ COPY src ./src
 # Bake public env vars into the JS bundle (Metro reads .env during assembleRelease).
 ARG EXPO_PUBLIC_API_URL=http://10.0.2.2:8000
 ARG EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=
+ARG EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=
 ARG BUILD_TYPE
-RUN printf 'EXPO_PUBLIC_API_URL=%s\nEXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=%s\n' \
-      "${EXPO_PUBLIC_API_URL}" "${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID}" \
+RUN printf 'EXPO_PUBLIC_API_URL=%s\nEXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=%s\nEXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=%s\n' \
+      "${EXPO_PUBLIC_API_URL}" "${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID}" "${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID}" \
       > /app/.env \
     && echo "==> Bundle env: EXPO_PUBLIC_API_URL=${EXPO_PUBLIC_API_URL}" \
-    && echo "==> Bundle env: EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID}"
+    && echo "==> Bundle env: EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID}" \
+    && echo "==> Bundle env: EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID}"
 
 # Gradle cache restored by CI (actions/cache) or kept from prior local builds.
 RUN mkdir -p "${GRADLE_USER_HOME}"

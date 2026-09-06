@@ -24,6 +24,10 @@ def to_response(account: Account, balance: float) -> AccountResponse:
         icon_key=account.icon_key,
         color=account.color,
         initial_balance=float(account.initial_balance or 0),
+        cbu=account.cbu,
+        cvu=account.cvu,
+        alias=account.alias,
+        provider_key=account.provider_key,
         balance=balance,
         created_at=account.created_at,
         updated_at=account.updated_at,
@@ -54,6 +58,10 @@ async def create_account(body: AccountCreate, group: Group = Depends(get_current
         icon_key=body.icon_key,
         color=body.color,
         initial_balance=body.initial_balance,
+        cbu=body.cbu,
+        cvu=body.cvu,
+        alias=body.alias,
+        provider_key=body.provider_key,
     )
     db.add(acc)
     await db.commit()

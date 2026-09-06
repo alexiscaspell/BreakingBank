@@ -39,6 +39,29 @@ async def migrate_schema(conn: AsyncConnection) -> None:
     if not await _column_exists(conn, "users", "active_group_id"):
         await conn.execute(text("ALTER TABLE users ADD COLUMN active_group_id VARCHAR(36)"))
 
+    if await _table_exists(conn, "groups") and not await _column_exists(conn, "groups", "integration_token"):
+        await conn.execute(text("ALTER TABLE groups ADD COLUMN integration_token VARCHAR(64)"))
+
+    account_columns = (
+        ("cbu", "VARCHAR(30)"),
+        ("cvu", "VARCHAR(30)"),
+        ("alias", "VARCHAR(100)"),
+        ("provider_key", "VARCHAR(40)"),
+    )
+    if await _table_exists(conn, "accounts"):
+        for column, ddl in account_columns:
+            if not await _column_exists(conn, "accounts", column):
+                await conn.execute(text(f"ALTER TABLE accounts ADD COLUMN {column} {ddl}"))
+
+    txn_columns = (
+        ("source", "VARCHAR(40) DEFAULT 'manual'"),
+        ("external_id", "VARCHAR(120)"),
+    )
+    if await _table_exists(conn, "transactions"):
+        for column, ddl in txn_columns:
+            if not await _column_exists(conn, "transactions", column):
+                await conn.execute(text(f"ALTER TABLE transactions ADD COLUMN {column} {ddl}"))
+
     recurring_columns = (
         ("type", "VARCHAR(20) DEFAULT 'expense'"),
         ("comment", "TEXT"),
